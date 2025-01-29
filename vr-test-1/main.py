@@ -16,6 +16,7 @@ from panda3d.core import (
     GraphicsOutput,
     GraphicsEngine,
     PNMImage,
+    Texture,
 )
 from direct.showbase.ShowBase import ShowBase
 from time import sleep
@@ -44,41 +45,33 @@ class MyApp(ShowBase):
         self.camList.append(self.cam_right)
         self.focusObject = self.vrCam.attachNewNode("focusObject")
         self.focusObject.setPos(0, 0, 0)
+        model = self.loader.loadModel("models/box")
+        model.reparentTo(self.render)
 
-        def vrFocusTask(task):
-            self.cam_left.lookAt(self.focusObject)
-            self.cam_right.lookAt(self.focusObject)
-            return task.cont
-
-        # self.taskMgr.add(vrFocusTask, "vrFocusTask")
-
-        # self.cam = self.cam_right
+        self.cam_left_tex = Texture()
+        self.cam_right_tex = Texture()
+        self.cam_left_tex.setKeepRamImage(True)
+        self.cam_right_tex.setKeepRamImage(True)
+        self.cam_left.node().getDisplayRegion(0).getWindow().addRenderTexture(
+            self.cam_left_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
+        )
+        self.cam_right.node().getDisplayRegion(0).getWindow().addRenderTexture(
+            self.cam_right_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
+        )
         self.vrCam.setPos(10, 10, 10)
         self.vrCam.lookAt(0, 0, 0)
 
-        model = self.loader.loadModel("models/box")
-        model.reparentTo(self.render)
 
 
 class main:
     def start(self):
         self.image_offset = 0.1225
-        self.cap = cv2.VideoCapture(0)  # Open the system camera
-        if not self.cap.isOpened():
-            print("Error: Could not open system camera.")
-            return
 
         while True:
-            ret, frame = self.cap.read()
-            if not ret:
-                print("Error: Could not read frame from system camera.")
-                break
 
-            frame_left = frame
-            frame_right = frame
+            frame_left = self.get_camera_image(app.cam_left_tex)
+            frame_right = self.get_camera_image(app.cam_right_tex)
 
-            frame_left = cv2.flip(frame_left, 0)  # Flip the frame vertically
-            frame_right = cv2.flip(frame_right, 0)  # Flip the frame vertically
             frame_data_left = np.array(frame_left, np.uint8)
             frame_data_right = np.array(frame_right, np.uint8)
 
@@ -214,10 +207,10 @@ class main:
                 # Variable to control the distance between images
 
                 for frame_index, frame_state in enumerate(context.frame_loop()):
-                    frame = self.capture_frame()
+                    frame = self.get_camera_image(app.cam_left_tex)
                     if frame is not None:
-                        frame_left = frame
-                        frame_right = frame
+                        frame_left = self.get_camera_image(app.cam_left_tex)
+                        frame_right = self.get_camera_image(app.cam_right_tex)
 
                         frame_data_left = np.array(frame_left, np.uint8)
                         frame_data_right = np.array(frame_right, np.uint8)
@@ -275,13 +268,12 @@ class main:
                         GL.glUseProgram(0)
                         GL.glDisable(GL.GL_BLEND)
 
-    def capture_frame(self):
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Error: Could not read frame from system camera.")
-            return None
-        frame = cv2.flip(frame, 0)  # Flip the frame vertically
-        return frame
+    def get_camera_image(self, texture):
+        while not texture.hasRamImage():
+            sleep(0.01)
+        image = np.array(texture.getRamImageAs("RGB"), dtype=np.uint8)
+        image = image.reshape((texture.getYSize(), texture.getXSize(), 3))
+        return image
 
     def update_image_offset(self, new_offset):
         self.image_offset += new_offset
@@ -309,8 +301,8 @@ class main:
 
 
 main = main()
-_Thread(target=main.start).start()
 app = MyApp()
+_Thread(target=main.start).start()
 app.run()
 
 while True:
