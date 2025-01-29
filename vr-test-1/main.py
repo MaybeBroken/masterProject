@@ -1,9 +1,8 @@
 """
 """
 
-import glfw
-from OpenGL import GL
-import xr
+from OpenGL import GL  # pip install PyOpenGL
+import xr  # pip install pyopenxr
 import numpy as np
 from PIL import Image
 import cv2
@@ -63,7 +62,6 @@ class MyApp(ShowBase):
 
 class main:
     def start(self):
-        glfw.init()
         self.image_offset = 0.1225
         self.cap = cv2.VideoCapture(0)  # Open the system camera
         if not self.cap.isOpened():
