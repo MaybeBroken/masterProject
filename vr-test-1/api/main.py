@@ -1,6 +1,7 @@
 """
 Module for running the OpenXR API.
 """
+
 if __name__ == "__main__":
     exit(1)
 import argparse
@@ -23,6 +24,8 @@ from .options import Options
 key_press_event = threading.Event()
 logger = logging.getLogger("api.main")
 
+UPDATEFUNC = None
+PROGRAM: OpenXRProgram
 
 def create_graphics_plugin(options: argparse.Namespace) -> IGraphicsPlugin:
     """Create a graphics plugin for the graphics API specified in the options."""
@@ -94,6 +97,7 @@ def initalize():
                 if program.session_running:
                     try:
                         program.poll_actions()
+                        UPDATEFUNC(program)
                     except xr.exception.SessionNotFocused:
                         # TODO: C++ code does not need this conditional. Why does python?
                         pass
@@ -152,6 +156,11 @@ def update_options_from_command_line(options: Options) -> bool:
         options.app_space = parsed.space
     options.parse_strings()
     return True
+
+
+def addUpdateFunction(func):
+    global UPDATEFUNC
+    UPDATEFUNC = func
 
 
 if __name__ == "__main__":
