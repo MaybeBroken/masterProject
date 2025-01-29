@@ -27,23 +27,41 @@ class MyApp(ShowBase):
         super().__init__()
         self.disableMouse()
         self.setBackgroundColor(0, 0, 0)
-        self.accept("wheel_up", lambda: main.update_image_offset(0.0025))
-        self.accept("wheel_down", lambda: main.update_image_offset(-0.0025))
+        self.accept(
+            "wheel_up",
+            lambda: self.cam_left.setPos(self.cam_left.getX() - 0.1, 0, 0)
+            and self.cam_right.setPos(self.cam_right.getX() + 0.1, 0, 0)
+            and self.cam_left.lookAt(self.focusObject)
+            and self.cam_right.lookAt(self.focusObject),
+        )
+        self.accept(
+            "wheel_down",
+            lambda: self.cam_left.setPos(self.cam_left.getX() + 0.1, 0, 0)
+            and self.cam_right.setPos(self.cam_right.getX() - 0.1, 0, 0)
+            and self.cam_left.lookAt(self.focusObject)
+            and self.cam_right.lookAt(self.focusObject),
+        )
+        self.accept("arrow_up", lambda: main.update_image_offset(0.0025))
+        self.accept("arrow_down", lambda: main.update_image_offset(-0.0025))
         self.accept("q", exit)
         self.accept("escape", exit)
+        self.accept("v", self.toggle_view)
         self.camList = []
+        self.view_left = True  # Flag to track which buffer to display
 
-        # Create the left camera
-        self.vrCam = self.render.attachNewNode("vrCam")
-        self.cam_left = self.makeCamera(self.win, scene=self.render)
-        self.cam_left.reparentTo(self.vrCam)
+        # Create the left camera buffer
+        self.buffer_left = self.make_buffer()
+        self.cam_left = self.makeCamera(self.buffer_left, scene=self.render)
         self.cam_left.setPos(-0.1, 0, 0)  # Slight offset to the left
         self.camList.append(self.cam_left)
-        self.cam_right = self.makeCamera(self.win, scene=self.render)
-        self.cam_right.reparentTo(self.vrCam)
+
+        # Create the right camera buffer
+        self.buffer_right = self.make_buffer()
+        self.cam_right = self.makeCamera(self.buffer_right, scene=self.render)
         self.cam_right.setPos(0.1, 0, 0)  # Slight offset to the right
         self.camList.append(self.cam_right)
-        self.focusObject = self.vrCam.attachNewNode("focusObject")
+
+        self.focusObject = self.render.attachNewNode("focusObject")
         self.focusObject.setPos(0, 0, 0)
         model = self.loader.loadModel("models/box")
         model.reparentTo(self.render)
@@ -52,15 +70,66 @@ class MyApp(ShowBase):
         self.cam_right_tex = Texture()
         self.cam_left_tex.setKeepRamImage(True)
         self.cam_right_tex.setKeepRamImage(True)
-        self.cam_left.node().getDisplayRegion(0).getWindow().addRenderTexture(
+        self.buffer_left.addRenderTexture(
             self.cam_left_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
-        self.cam_right.node().getDisplayRegion(0).getWindow().addRenderTexture(
+        self.buffer_right.addRenderTexture(
             self.cam_right_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
+        self.vrCam = self.render.attachNewNode("vrCam")
+        self.camRootNode = self.render.attachNewNode("camRootNode")
         self.vrCam.setPos(10, 10, 10)
         self.vrCam.lookAt(0, 0, 0)
+        self.vrCam.reparentTo(self.camRootNode)
+        self.camera.setPos(10, 10, 10)
+        self.camera.lookAt(0, 0, 0)
+        self.camera.reparentTo(self.camRootNode)
+        self.taskMgr.add(self.update_scene, "update_scene")
 
+    def make_buffer(self):
+        winprops = WindowProperties.size(800, 600)
+        fbprops = FrameBufferProperties()
+        fbprops.setRgbColor(True)
+        fbprops.setDepthBits(1)
+        buffer = self.graphicsEngine.makeOutput(
+            self.pipe,
+            "offscreen buffer",
+            -2,
+            fbprops,
+            winprops,
+            GraphicsPipe.BFRefuseWindow,
+            self.win.getGsg(),
+            self.win,
+        )
+        return buffer
+
+    def update_scene(self, task):
+        self.graphicsEngine.renderFrame()
+        self.camRootNode.setH(self.camRootNode.getH() + 0.5)
+        return task.cont
+
+    def toggle_view(self):
+        if self.view_left:
+            frame = self.get_camera_image(self.cam_left_tex)
+        else:
+            frame = self.get_camera_image(self.cam_right_tex)
+
+        frame_data = np.array(frame, np.uint8)
+        frame_image = Image.fromarray(frame_data)
+
+        # Create a temporary window to display the frame
+        temp_window_name = "Temporary View"
+        cv2.namedWindow(temp_window_name, cv2.WINDOW_NORMAL)
+        cv2.imshow(temp_window_name, frame_data)
+        cv2.waitKey(0)  # Wait for a key press to close the window
+        cv2.destroyWindow(temp_window_name)
+
+    def get_camera_image(self, texture):
+        while not texture.hasRamImage():
+            sleep(0.01)
+        image = np.array(texture.getRamImageAs("RGB"), dtype=np.uint8)
+        image = image.reshape((texture.getYSize(), texture.getXSize(), 3))
+        return image
 
 
 class main:
