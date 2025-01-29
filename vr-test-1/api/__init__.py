@@ -74,6 +74,29 @@ class BaseVrApp(ShowBase):
         self.camera.setPos(10, 10, 10)
         self.camera.lookAt(0, 0, 0)
         self.camera.reparentTo(self.camRootNode)
+        self.vrCameraPose = None
+        self.wantHeadsetControl = True
+
+        def getHeadsetTask(task):
+            try:
+                self.vrCameraPose = main.pose
+                if self.wantHeadsetControl:
+                    self.camRootNode.setPos(
+                        self.vrCameraPose.position.x * 5,
+                        self.vrCameraPose.position.y * 5,
+                        self.vrCameraPose.position.z * 5,
+                    )
+                    self.camRootNode.setHpr(
+                        self.vrCameraPose.orientation.y*6,
+                        self.vrCameraPose.orientation.z*6,
+                        self.vrCameraPose.orientation.x*6,
+                    )
+            except :
+                pass
+
+            return task.cont
+
+        self.taskMgr.add(getHeadsetTask, "getHeadsetTask")
 
         def resetView():
             self.camLens.setFov(52)
@@ -287,6 +310,20 @@ class main:
                 # Variable to control the distance between images
 
                 for frame_index, frame_state in enumerate(context.frame_loop()):
+                    view_state, views = xr.locate_views(
+                        session=context.session,
+                        view_locate_info=xr.ViewLocateInfo(
+                            view_configuration_type=context.view_configuration_type,
+                            display_time=frame_state.predicted_display_time,
+                            space=context.space,
+                        ),
+                    )
+                    flags = xr.ViewStateFlags(view_state.view_state_flags)
+                    if flags & xr.ViewStateFlags.POSITION_VALID_BIT:
+                        view = views[xr.Eye.LEFT]
+                        self.pose = view.pose
+                    else:
+                        None
                     frame = self.get_camera_image(cam_left_tex)
                     if frame is not None:
                         frame_left = self.get_camera_image(cam_left_tex)
