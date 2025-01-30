@@ -1,6 +1,11 @@
 """
 """
 
+import sys
+
+if not sys.platform == "win32":
+    raise Exception("This script is only avalible for Windows")
+
 from OpenGL import GL  # pip install PyOpenGL
 import xr  # pip install pyopenxr
 import numpy as np
@@ -187,7 +192,7 @@ class BaseVrApp(ShowBase):
                     self.cam_left.setPos(self.cam_left.getX() - 0.01, 0, 0),
                     self.cam_right.setPos(self.cam_right.getX() + 0.01, 0, 0),
                     print(
-                        "Lens Distance: ", (self.cam_left.getX(),self.cam_right.getX())
+                        "Lens Distance: ", (self.cam_left.getX(), self.cam_right.getX())
                     ),
                 ),
             )
