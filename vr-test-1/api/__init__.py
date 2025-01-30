@@ -39,7 +39,7 @@ class BaseVrApp(ShowBase):
         self.cam_left = self.makeCamera(
             self.buffer_left, scene=self.render, lens=self.vrLens
         )
-        self.cam_left.setPos(-0.5, 0, 0)  # Slight offset to the left
+        self.cam_left.setPos(-1, 0, 0)  # Slight offset to the left
         self.camList.append(self.cam_left)
 
         # Create the right camera buffer
@@ -47,7 +47,7 @@ class BaseVrApp(ShowBase):
         self.cam_right = self.makeCamera(
             self.buffer_right, scene=self.render, lens=self.vrLens
         )
-        self.cam_right.setPos(0.5, 0, 0)  # Slight offset to the right
+        self.cam_right.setPos(1, 0, 0)  # Slight offset to the right
         self.camList.append(self.cam_right)
 
         self.cam_left_tex = Texture()
@@ -75,6 +75,7 @@ class BaseVrApp(ShowBase):
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
         self.lastException = ""
+        self.lastExceptionTime = 0
 
         def getHeadsetTask(task):
             try:
@@ -94,12 +95,17 @@ class BaseVrApp(ShowBase):
                     self.camera.setHpr(self.vrCam.getHpr())
                     self.camLens.setFov(self.vrLens.getFov())
             except Exception as e:
-                self.lastException = str(e)
                 if str(e) != self.lastException:
-                    print(e)
+                    print(str(e))
+                    print()
                     sleep(0.1)
                 else:
+                    self.lastExceptionTime += 1
+                    print(
+                        f"\033[FLast exception repeated {self.lastExceptionTime} times"
+                    )
                     sleep(0.75)
+                self.lastException = str(e)
 
             return task.cont
 
@@ -158,7 +164,10 @@ class BaseVrApp(ShowBase):
         self.cam_right.setPos(-0.25, 0, 0)
 
     def make_buffer(self):
-        winprops = WindowProperties.size(self.lensResolution[0], self.lensResolution[1])
+        winprops = WindowProperties.size(
+            self.lensResolution[0] * (2064 // 2208),
+            self.lensResolution[1],
+        )
         fbprops = FrameBufferProperties()
         fbprops.setRgbColor(True)
         fbprops.setDepthBits(1)
@@ -177,23 +186,36 @@ class BaseVrApp(ShowBase):
     def toggle_dev_win_view(self):
         def update_frames():
             while True:
-                frame_left = self.get_camera_image(self.cam_left_tex)
-                frame_right = self.get_camera_image(self.cam_right_tex)
+                try:
+                    frame_left = self.get_camera_image(self.cam_left_tex)
+                    frame_right = self.get_camera_image(self.cam_right_tex)
 
-                frame_data_left = np.array(frame_left, np.uint8)
-                frame_data_right = np.array(frame_right, np.uint8)
+                    frame_data_left = np.array(frame_left, np.uint8)
+                    frame_data_right = np.array(frame_right, np.uint8)
 
-                # Create or update windows to display the frames
-                left_window_name = "Left View"
-                right_window_name = "Right View"
-                cv2.namedWindow(left_window_name, cv2.WINDOW_NORMAL)
-                cv2.namedWindow(right_window_name, cv2.WINDOW_NORMAL)
-                cv2.imshow(left_window_name, frame_data_left)
-                cv2.imshow(right_window_name, frame_data_right)
+                    # Create or update windows to display the frames
+                    left_window_name = "Left View"
+                    right_window_name = "Right View"
+                    cv2.namedWindow(left_window_name, cv2.WINDOW_NORMAL)
+                    cv2.namedWindow(right_window_name, cv2.WINDOW_NORMAL)
+                    cv2.imshow(left_window_name, frame_data_left)
+                    cv2.imshow(right_window_name, frame_data_right)
 
-                # Add a small delay to allow the window to refresh
-                cv2.waitKey(1)
-                sleep(0.01)
+                    # Add a small delay to allow the window to refresh
+                    cv2.waitKey(1)
+                    sleep(0.01)
+                except Exception as e:
+                    if str(e) != self.lastException:
+                        print(str(e))
+                        print()
+                        sleep(0.1)
+                    else:
+                        self.lastExceptionTime += 1
+                        print(
+                            f"\033[FLast exception repeated {self.lastExceptionTime} times"
+                        )
+                        sleep(0.75)
+                    self.lastException = str(e)
 
         # Run the frame update in a separate thread to avoid blocking the main loop
         _Thread(target=update_frames, daemon=True).start()
@@ -209,15 +231,30 @@ class BaseVrApp(ShowBase):
 class main:
     def start(self):
         self.image_offset = 0.1225
+        self.lastException = ""
+        self.lastExceptionTime = 0
 
         while True:
+            print("Waiting for camera textures...")
             while True:
                 try:
                     cam_left_tex
                     cam_right_tex
                     break
-                except NameError:
-                    sleep(0.1)
+                except NameError as e:
+                    if str(e) != self.lastException:
+                        print(str(e))
+                        print()
+                        sleep(0.1)
+                    else:
+                        self.lastExceptionTime += 1
+                        print(
+                            f"\033[FLast exception repeated {self.lastExceptionTime} times"
+                        )
+                        sleep(0.75)
+                    self.lastException = str(e)
+
+            print("Camera textures found. Starting main loop...")
             frame_left = self.get_camera_image(cam_left_tex)
             frame_right = self.get_camera_image(cam_right_tex)
 
@@ -238,6 +275,8 @@ class main:
                 # self.cam_left = BaseVrApp.camList[0]
                 # self.cam_right = BaseVrApp.camList[1]
 
+                print("Creating textures...")
+
                 texture_id_left = GL.glGenTextures(1)
                 texture_id_right = GL.glGenTextures(1)
 
@@ -249,6 +288,8 @@ class main:
                     GL.glTexParameteri(
                         GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR
                     )
+
+                print("Textures created. Starting rendering loop...")
 
                 setup_texture(texture_id_left)
                 setup_texture(texture_id_right)
