@@ -281,7 +281,6 @@ class main:
         self.controller = {"left": None, "right": None}
 
         while True:
-            print("Waiting for camera textures...")
             while True:
                 try:
                     cam_left_tex
@@ -300,7 +299,6 @@ class main:
                         sleep(0.75)
                     self.lastException = str(e)
 
-            print("Camera textures found. Starting main loop...")
             frame_left = self.get_camera_image(cam_left_tex)
             frame_right = self.get_camera_image(cam_right_tex)
 
@@ -317,12 +315,6 @@ class main:
                 ),
             ) as context:
 
-                # Initialize the Panda3D camera
-                # self.cam_left = BaseVrApp.camList[0]
-                # self.cam_right = BaseVrApp.camList[1]
-
-                print("Creating textures...")
-
                 texture_id_left = GL.glGenTextures(1)
                 texture_id_right = GL.glGenTextures(1)
 
@@ -334,8 +326,6 @@ class main:
                     GL.glTexParameteri(
                         GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR
                     )
-
-                print("Textures created. Starting rendering loop...")
 
                 setup_texture(texture_id_left)
                 setup_texture(texture_id_right)
@@ -616,7 +606,6 @@ class main:
 
     def get_camera_image(self, texture):
         while not texture.hasRamImage():
-            print("\033[FWaiting for camera textures...")
             sleep(0.01)
         image = np.array(texture.getRamImageAs("RGB"), dtype=np.uint8)
         image = image.reshape((texture.getYSize(), texture.getXSize(), 3))
