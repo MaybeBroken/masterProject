@@ -21,10 +21,11 @@ from panda3d.core import (
 )
 from direct.showbase.ShowBase import ShowBase
 from time import sleep
+import ctypes
 
 
 class BaseVrApp(ShowBase):
-    def __init__(self, lensResolution=[800, 800], wantDevMode=False, FOV=84):
+    def __init__(self, lensResolution=[800, 800], wantDevMode=False, FOV=95.5):
         super().__init__()
         _Thread(target=main.start).start()
         self.setBackgroundColor(0, 0, 0)
@@ -39,7 +40,7 @@ class BaseVrApp(ShowBase):
         self.cam_left = self.makeCamera(
             self.buffer_left, scene=self.render, lens=self.vrLens
         )
-        self.cam_left.setPos(-1, 0, 0)  # Slight offset to the left
+        self.cam_left.setPos(-0.25, 0, 0)  # Adjusted offset to the left
         self.camList.append(self.cam_left)
 
         # Create the right camera buffer
@@ -47,7 +48,7 @@ class BaseVrApp(ShowBase):
         self.cam_right = self.makeCamera(
             self.buffer_right, scene=self.render, lens=self.vrLens
         )
-        self.cam_right.setPos(1, 0, 0)  # Slight offset to the right
+        self.cam_right.setPos(0.25, 0, 0)  # Adjusted offset to the right
         self.camList.append(self.cam_right)
 
         self.cam_left_tex = Texture()
@@ -64,6 +65,8 @@ class BaseVrApp(ShowBase):
             self.cam_right_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
         self.vrCam = self.render.attachNewNode("vrCam")
+        self.focusObject = self.vrCam.attachNewNode("focusObject")
+        self.focusObject.setY(15)
         self.cam_left.reparentTo(self.vrCam)
         self.cam_right.reparentTo(self.vrCam)
         self.camRootNode = self.render.attachNewNode("camRootNode")
@@ -82,9 +85,9 @@ class BaseVrApp(ShowBase):
                 self.vrCameraPose = main.pose
                 if self.wantHeadsetControl:
                     self.vrCam.setPos(
-                        (self.vrCameraPose.position.x * 10) + self.vrCamPos[0],
-                        (self.vrCameraPose.position.z * 10) + self.vrCamPos[1],
-                        (self.vrCameraPose.position.y * 10) + self.vrCamPos[2],
+                        (self.vrCameraPose.position.x * -25) + self.vrCamPos[0],
+                        (self.vrCameraPose.position.z * 25) + self.vrCamPos[1],
+                        (self.vrCameraPose.position.y * 25) + self.vrCamPos[2],
                     )
                     self.vrCam.setHpr(
                         (self.vrCameraPose.orientation.y * -100) + self.vrCamHpr[0],
@@ -94,6 +97,11 @@ class BaseVrApp(ShowBase):
                     self.camera.setPos(self.vrCam.getPos())
                     self.camera.setHpr(self.vrCam.getHpr())
                     self.camLens.setFov(self.vrLens.getFov())
+                    self.camLens.setAspectRatio(
+                        self.lensResolution[0] / self.lensResolution[1]
+                    )
+                    # self.cam_left.lookAt(self.focusObject)
+                    # self.cam_right.lookAt(self.focusObject)
             except Exception as e:
                 if str(e) != self.lastException:
                     print(str(e))
@@ -115,11 +123,12 @@ class BaseVrApp(ShowBase):
         )
 
         def resetView():
-            self.camLens.setFov(FOV)
-            self.cam_left.setPos(0.25, 0, 0)
-            self.cam_right.setPos(-0.25, 0, 0)
-            self.cam_left.lookAt(self.focusObject)
-            self.cam_right.lookAt(self.focusObject),
+            self.vrLens.setFov(FOV)
+            self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
+            self.cam_left.setPos(-0.25, 0, 0)
+            self.cam_right.setPos(0.25, 0, 0)
+            # self.cam_left.lookAt(self.focusObject)
+            # self.cam_right.lookAt(self.focusObject),
 
         if wantDevMode:
             self.accept("f", resetView)
@@ -127,20 +136,20 @@ class BaseVrApp(ShowBase):
             self.accept(
                 "p",
                 lambda: print(
-                    f"Lens FOV: {self.vrLens.getFov()}\nLens Distance: {self.cam_left.getX() - self.cam_right.getX()}\n"
+                    f"Lens FOV: {self.vrLens.getFov()}\nLens Distance: {self.cam_left.getX(), self.cam_right.getX()}\nFocus Y: {self.focusObject.getY()}\nImage Offset: {main.image_offset}"
                 ),
             )
             self.accept(
                 "wheel_up",
                 lambda: (
-                    self.vrLens.setFov(self.vrLens.getFov() + 1),
+                    self.vrLens.setFov(self.vrLens.getFov() + 0.5),
                     print("FOV: ", self.vrLens.getFov()),
                 ),
             )
             self.accept(
                 "wheel_down",
                 lambda: (
-                    self.vrLens.setFov(self.vrLens.getFov() - 1),
+                    self.vrLens.setFov(self.vrLens.getFov() - 0.5),
                     print("FOV: ", self.vrLens.getFov()),
                 ),
             )
@@ -158,14 +167,49 @@ class BaseVrApp(ShowBase):
                     print("Offset: ", main.image_offset),
                 ),
             )
+            self.accept(
+                "shift-wheel_up",
+                lambda: (
+                    self.focusObject.setY(self.focusObject.getY() + 1),
+                    print("Focus Y: ", self.focusObject.getY()),
+                ),
+            )
+            self.accept(
+                "shift-wheel_down",
+                lambda: (
+                    self.focusObject.setY(self.focusObject.getY() - 1),
+                    print("Focus Y: ", self.focusObject.getY()),
+                ),
+            )
+            self.accept(
+                "alt-wheel_up",
+                lambda: (
+                    self.cam_left.setPos(self.cam_left.getX() - 0.01, 0, 0),
+                    self.cam_right.setPos(self.cam_right.getX() + 0.01, 0, 0),
+                    print(
+                        "Lens Distance: ", (self.cam_left.getX(),self.cam_right.getX())
+                    ),
+                ),
+            )
+            self.accept(
+                "alt-wheel_down",
+                lambda: (
+                    self.cam_left.setPos(self.cam_left.getX() + 0.01, 0, 0),
+                    self.cam_right.setPos(self.cam_right.getX() - 0.01, 0, 0),
+                    print(
+                        "Lens Distance: ", (self.cam_left.getX(), self.cam_right.getX())
+                    ),
+                ),
+            )
 
-        self.camLens.setFov(FOV)
-        self.cam_left.setPos(0.25, 0, 0)
-        self.cam_right.setPos(-0.25, 0, 0)
+        self.vrLens.setFov(FOV)
+        self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
+        self.cam_left.setPos(-0.25, 0, 0)
+        self.cam_right.setPos(0.25, 0, 0)
 
     def make_buffer(self):
         winprops = WindowProperties.size(
-            self.lensResolution[0] * (2064 // 2208),
+            self.lensResolution[0],
             self.lensResolution[1],
         )
         fbprops = FrameBufferProperties()
@@ -233,6 +277,8 @@ class main:
         self.image_offset = 0.1225
         self.lastException = ""
         self.lastExceptionTime = 0
+        self.pose = None
+        self.controller = {"left": None, "right": None}
 
         while True:
             print("Waiting for camera textures...")
@@ -396,6 +442,76 @@ class main:
 
                 # Variable to control the distance between images
 
+                controller_paths = (xr.Path * 2)(
+                    xr.string_to_path(context.instance, "/user/hand/left"),
+                    xr.string_to_path(context.instance, "/user/hand/right"),
+                )
+                controller_pose_action = xr.create_action(
+                    action_set=context.default_action_set,
+                    create_info=xr.ActionCreateInfo(
+                        action_type=xr.ActionType.POSE_INPUT,
+                        action_name="hand_pose",
+                        localized_action_name="Hand Pose",
+                        count_subaction_paths=len(controller_paths),
+                        subaction_paths=controller_paths,
+                    ),
+                )
+                suggested_bindings = (xr.ActionSuggestedBinding * 2)(
+                    xr.ActionSuggestedBinding(
+                        action=controller_pose_action,
+                        binding=xr.string_to_path(
+                            instance=context.instance,
+                            path_string="/user/hand/left/input/grip/pose",
+                        ),
+                    ),
+                    xr.ActionSuggestedBinding(
+                        action=controller_pose_action,
+                        binding=xr.string_to_path(
+                            instance=context.instance,
+                            path_string="/user/hand/right/input/grip/pose",
+                        ),
+                    ),
+                )
+                xr.suggest_interaction_profile_bindings(
+                    instance=context.instance,
+                    suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                        interaction_profile=xr.string_to_path(
+                            context.instance,
+                            "/interaction_profiles/khr/simple_controller",
+                        ),
+                        count_suggested_bindings=len(suggested_bindings),
+                        suggested_bindings=suggested_bindings,
+                    ),
+                )
+                xr.suggest_interaction_profile_bindings(
+                    instance=context.instance,
+                    suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                        interaction_profile=xr.string_to_path(
+                            context.instance,
+                            "/interaction_profiles/htc/vive_controller",
+                        ),
+                        count_suggested_bindings=len(suggested_bindings),
+                        suggested_bindings=suggested_bindings,
+                    ),
+                )
+
+                action_spaces = [
+                    xr.create_action_space(
+                        session=context.session,
+                        create_info=xr.ActionSpaceCreateInfo(
+                            action=controller_pose_action,
+                            subaction_path=controller_paths[0],
+                        ),
+                    ),
+                    xr.create_action_space(
+                        session=context.session,
+                        create_info=xr.ActionSpaceCreateInfo(
+                            action=controller_pose_action,
+                            subaction_path=controller_paths[1],
+                        ),
+                    ),
+                ]
+
                 for frame_index, frame_state in enumerate(context.frame_loop()):
                     view_state, views = xr.locate_views(
                         session=context.session,
@@ -471,9 +587,36 @@ class main:
                         GL.glBindVertexArray(0)
                         GL.glUseProgram(0)
                         GL.glDisable(GL.GL_BLEND)
+                    if context.session_state == xr.SessionState.FOCUSED:
+                        active_action_set = xr.ActiveActionSet(
+                            action_set=context.default_action_set,
+                            subaction_path=xr.NULL_PATH,
+                        )
+                        xr.sync_actions(
+                            session=context.session,
+                            sync_info=xr.ActionsSyncInfo(
+                                count_active_action_sets=1,
+                                active_action_sets=ctypes.pointer(active_action_set),
+                            ),
+                        )
+                        for index, space in enumerate(action_spaces):
+                            space_location = xr.locate_space(
+                                space=space,
+                                base_space=context.space,
+                                time=frame_state.predicted_display_time,
+                            )
+                            if (
+                                space_location.location_flags
+                                & xr.SPACE_LOCATION_POSITION_VALID_BIT
+                            ):
+                                if index == 0:
+                                    self.controller["left"] = space_location.pose
+                                elif index == 1:
+                                    self.controller["right"] = space_location.pose
 
     def get_camera_image(self, texture):
         while not texture.hasRamImage():
+            print("\033[FWaiting for camera textures...")
             sleep(0.01)
         image = np.array(texture.getRamImageAs("RGB"), dtype=np.uint8)
         image = image.reshape((texture.getYSize(), texture.getXSize(), 3))
