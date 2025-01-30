@@ -39,7 +39,7 @@ class BaseVrApp(ShowBase):
         self.cam_left = self.makeCamera(
             self.buffer_left, scene=self.render, lens=self.vrLens
         )
-        self.cam_left.setPos(-0.1, 0, 0)  # Slight offset to the left
+        self.cam_left.setPos(-0.5, 0, 0)  # Slight offset to the left
         self.camList.append(self.cam_left)
 
         # Create the right camera buffer
@@ -47,7 +47,7 @@ class BaseVrApp(ShowBase):
         self.cam_right = self.makeCamera(
             self.buffer_right, scene=self.render, lens=self.vrLens
         )
-        self.cam_right.setPos(0.1, 0, 0)  # Slight offset to the right
+        self.cam_right.setPos(0.5, 0, 0)  # Slight offset to the right
         self.camList.append(self.cam_right)
 
         self.cam_left_tex = Texture()
@@ -74,6 +74,7 @@ class BaseVrApp(ShowBase):
 
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
+        self.lastException = ""
 
         def getHeadsetTask(task):
             try:
@@ -91,9 +92,14 @@ class BaseVrApp(ShowBase):
                     )
                     self.camera.setPos(self.vrCam.getPos())
                     self.camera.setHpr(self.vrCam.getHpr())
+                    self.camLens.setFov(self.vrLens.getFov())
             except Exception as e:
-                print(e)
-                sleep(0.75)
+                self.lastException = str(e)
+                if str(e) != self.lastException:
+                    print(e)
+                    sleep(0.1)
+                else:
+                    sleep(0.75)
 
             return task.cont
 
