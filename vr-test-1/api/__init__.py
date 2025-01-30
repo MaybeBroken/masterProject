@@ -24,11 +24,11 @@ from time import sleep
 
 
 class BaseVrApp(ShowBase):
-    def __init__(self, lensResolution=[800, 800], wantDevMode=False, FOV=None):
+    def __init__(self, lensResolution=[800, 800], wantDevMode=False, FOV=84):
         super().__init__()
         _Thread(target=main.start).start()
-        self.disableMouse()
         self.setBackgroundColor(0, 0, 0)
+        self.lensResolution = lensResolution
 
         self.camList = []
         self.view_left = True  # Flag to track which buffer to display
@@ -50,9 +50,6 @@ class BaseVrApp(ShowBase):
         self.cam_right.setPos(0.1, 0, 0)  # Slight offset to the right
         self.camList.append(self.cam_right)
 
-        self.focusObject = self.render.attachNewNode("focusObject")
-        self.focusObject.setPos(0, 0, 0)
-
         self.cam_left_tex = Texture()
         self.cam_right_tex = Texture()
         self.cam_left_tex.setKeepRamImage(True)
@@ -67,42 +64,48 @@ class BaseVrApp(ShowBase):
             self.cam_right_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
         self.vrCam = self.render.attachNewNode("vrCam")
+        self.cam_left.reparentTo(self.vrCam)
+        self.cam_right.reparentTo(self.vrCam)
         self.camRootNode = self.render.attachNewNode("camRootNode")
-        self.vrCam.setPos(10, 10, 10)
-        self.vrCam.lookAt(0, 0, 0)
         self.vrCam.reparentTo(self.camRootNode)
-        self.camera.setPos(10, 10, 10)
-        self.camera.lookAt(0, 0, 0)
         self.camera.reparentTo(self.camRootNode)
         self.vrCameraPose = None
         self.wantHeadsetControl = True
+
+        self.vrCamPos = (0, 0, 0)
+        self.vrCamHpr = (0, 0, 0)
 
         def getHeadsetTask(task):
             try:
                 self.vrCameraPose = main.pose
                 if self.wantHeadsetControl:
-                    self.camRootNode.setPos(
-                        self.vrCameraPose.position.x * 5,
-                        self.vrCameraPose.position.y * 5,
-                        self.vrCameraPose.position.z * 5,
+                    self.vrCam.setPos(
+                        (self.vrCameraPose.position.x * 10) + self.vrCamPos[0],
+                        (self.vrCameraPose.position.z * 10) + self.vrCamPos[1],
+                        (self.vrCameraPose.position.y * 10) + self.vrCamPos[2],
                     )
-                    self.camRootNode.setHpr(
-                        self.vrCameraPose.orientation.y*6,
-                        self.vrCameraPose.orientation.z*6,
-                        self.vrCameraPose.orientation.x*6,
+                    self.vrCam.setHpr(
+                        (self.vrCameraPose.orientation.y * -100) + self.vrCamHpr[0],
+                        (self.vrCameraPose.orientation.x * -100) + self.vrCamHpr[1],
+                        (self.vrCameraPose.orientation.z * 100) + self.vrCamHpr[2],
                     )
-            except :
-                pass
+                    self.camera.setPos(self.vrCam.getPos())
+                    self.camera.setHpr(self.vrCam.getHpr())
+            except Exception as e:
+                print(e)
+                sleep(0.75)
 
             return task.cont
 
         self.taskMgr.add(getHeadsetTask, "getHeadsetTask")
+        self.doMethodLater(
+            2, lambda task: self.toggle_dev_win_view(), "toggle_dev_win_view"
+        )
 
         def resetView():
-            self.camLens.setFov(52)
-            main.set_image_offset(0.135)
-            self.cam_left.setPos(-0.65, 0, 0)
-            self.cam_right.setPos(0.65, 0, 0)
+            self.camLens.setFov(FOV)
+            self.cam_left.setPos(0.25, 0, 0)
+            self.cam_right.setPos(-0.25, 0, 0)
             self.cam_left.lookAt(self.focusObject)
             self.cam_right.lookAt(self.focusObject),
 
@@ -112,15 +115,44 @@ class BaseVrApp(ShowBase):
             self.accept(
                 "p",
                 lambda: print(
-                    f"Lens FOV: {self.vrLens.getFov()}\nImage Offset: {main.image_offset}\nLens Distance: {self.cam_left.getX() - self.cam_right.getX()}\n"
+                    f"Lens FOV: {self.vrLens.getFov()}\nLens Distance: {self.cam_left.getX() - self.cam_right.getX()}\n"
                 ),
             )
-        resetView()
-        if FOV is not None:
-            self.camLens.setFov(FOV)
+            self.accept(
+                "wheel_up",
+                lambda: (
+                    self.vrLens.setFov(self.vrLens.getFov() + 1),
+                    print("FOV: ", self.vrLens.getFov()),
+                ),
+            )
+            self.accept(
+                "wheel_down",
+                lambda: (
+                    self.vrLens.setFov(self.vrLens.getFov() - 1),
+                    print("FOV: ", self.vrLens.getFov()),
+                ),
+            )
+            self.accept(
+                "control-wheel_up",
+                lambda: (
+                    main.update_image_offset(0.01),
+                    print("Offset: ", main.image_offset),
+                ),
+            )
+            self.accept(
+                "control-wheel_down",
+                lambda: (
+                    main.update_image_offset(-0.01),
+                    print("Offset: ", main.image_offset),
+                ),
+            )
+
+        self.camLens.setFov(FOV)
+        self.cam_left.setPos(0.25, 0, 0)
+        self.cam_right.setPos(-0.25, 0, 0)
 
     def make_buffer(self):
-        winprops = WindowProperties.size(800, 800)
+        winprops = WindowProperties.size(self.lensResolution[0], self.lensResolution[1])
         fbprops = FrameBufferProperties()
         fbprops.setRgbColor(True)
         fbprops.setDepthBits(1)
@@ -137,20 +169,28 @@ class BaseVrApp(ShowBase):
         return buffer
 
     def toggle_dev_win_view(self):
-        if self.view_left:
-            frame = self.get_camera_image(self.cam_left_tex)
-        else:
-            frame = self.get_camera_image(self.cam_right_tex)
+        def update_frames():
+            while True:
+                frame_left = self.get_camera_image(self.cam_left_tex)
+                frame_right = self.get_camera_image(self.cam_right_tex)
 
-        frame_data = np.array(frame, np.uint8)
-        frame_image = Image.fromarray(frame_data)
+                frame_data_left = np.array(frame_left, np.uint8)
+                frame_data_right = np.array(frame_right, np.uint8)
 
-        # Create a temporary window to display the frame
-        temp_window_name = "Temporary View"
-        cv2.namedWindow(temp_window_name, cv2.WINDOW_NORMAL)
-        cv2.imshow(temp_window_name, frame_data)
-        cv2.waitKey(0)  # Wait for a key press to close the window
-        cv2.destroyWindow(temp_window_name)
+                # Create or update windows to display the frames
+                left_window_name = "Left View"
+                right_window_name = "Right View"
+                cv2.namedWindow(left_window_name, cv2.WINDOW_NORMAL)
+                cv2.namedWindow(right_window_name, cv2.WINDOW_NORMAL)
+                cv2.imshow(left_window_name, frame_data_left)
+                cv2.imshow(right_window_name, frame_data_right)
+
+                # Add a small delay to allow the window to refresh
+                cv2.waitKey(1)
+                sleep(0.01)
+
+        # Run the frame update in a separate thread to avoid blocking the main loop
+        _Thread(target=update_frames, daemon=True).start()
 
     def get_camera_image(self, texture):
         while not texture.hasRamImage():
@@ -340,7 +380,7 @@ class main:
                             frame_left.shape[1],
                             frame_left.shape[0],
                             0,
-                            GL.GL_BGR,
+                            GL.GL_RGB,
                             GL.GL_UNSIGNED_BYTE,
                             frame_data_left,
                         )
@@ -353,7 +393,7 @@ class main:
                             frame_right.shape[1],
                             frame_right.shape[0],
                             0,
-                            GL.GL_BGR,
+                            GL.GL_RGB,
                             GL.GL_UNSIGNED_BYTE,
                             frame_data_right,
                         )
