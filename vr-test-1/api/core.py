@@ -30,7 +30,16 @@ import ctypes
 
 
 class BaseVrApp(ShowBase):
-    def __init__(self, lensResolution=[800, 800], wantDevMode=False, FOV=95.5):
+    def __init__(
+        self,
+        lensResolution=[800, 800],
+        wantDevMode=False,
+        FOV=95.5,
+        autoCamPositioning=False,
+        autoCamRotation=False,
+        autoControllerPositioning=False,
+        autoControllerRotation=False,
+    ):
         super().__init__()
         _Thread(target=main.start).start()
         self.setBackgroundColor(0, 0, 0)
@@ -76,7 +85,6 @@ class BaseVrApp(ShowBase):
         self.vrCam.reparentTo(self.camRootNode)
         self.camera.reparentTo(self.camRootNode)
         self.vrCameraPose = None
-        self.wantHeadsetControl = True
 
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
@@ -97,43 +105,112 @@ class BaseVrApp(ShowBase):
             try:
                 self.vrCameraPose = main.pose
                 self.vrControllerPose = main.controller
-                if self.wantHeadsetControl:
+                self.camera.setPos(self.vrCam.getPos())
+                self.camera.setHpr(self.vrCam.getHpr())
+                self.camLens.setFov(self.vrLens.getFov())
+                self.camLens.setAspectRatio(
+                    self.lensResolution[0] / self.lensResolution[1]
+                )
+                if autoCamPositioning:
                     self.vrCam.setPos(
-                        (self.vrCameraPose.position.x * 30) + self.vrCamPos[0],
-                        (self.vrCameraPose.position.z * -30) + self.vrCamPos[1],
-                        (self.vrCameraPose.position.y * 30) + self.vrCamPos[2],
+                        ((self.vrCameraPose.position.x + self.vrCamPosOffset[0]) * 30)
+                        + self.vrCamPos[0],
+                        ((self.vrCameraPose.position.z + self.vrCamPosOffset[1]) * -30)
+                        + self.vrCamPos[1],
+                        ((self.vrCameraPose.position.y + self.vrCamPosOffset[2]) * 30)
+                        + self.vrCamPos[2],
                     )
+                if autoCamRotation:
                     self.vrCam.setHpr(
-                        (self.vrCameraPose.orientation.y * 100) + self.vrCamHpr[0],
-                        (self.vrCameraPose.orientation.x * 100) + self.vrCamHpr[1],
-                        (self.vrCameraPose.orientation.z * -100) + self.vrCamHpr[2],
+                        (
+                            (self.vrCameraPose.orientation.y + self.vrCamHprOffset[0])
+                            * 100
+                        )
+                        + self.vrCamHpr[0],
+                        (
+                            (self.vrCameraPose.orientation.x + self.vrCamHprOffset[1])
+                            * 100
+                        )
+                        + self.vrCamHpr[1],
+                        (
+                            (self.vrCameraPose.orientation.z + self.vrCamHprOffset[2])
+                            * -100
+                        )
+                        + self.vrCamHpr[2],
                     )
-                    self.camera.setPos(self.vrCam.getPos())
-                    self.camera.setHpr(self.vrCam.getHpr())
-                    self.camLens.setFov(self.vrLens.getFov())
-                    self.camLens.setAspectRatio(
-                        self.lensResolution[0] / self.lensResolution[1]
-                    )
+                if autoControllerPositioning:
                     try:
                         self.hand_left.setPos(
-                            (self.vrControllerPose["left"].position.x * 25),
-                            (self.vrControllerPose["left"].position.z * -25),
-                            (self.vrControllerPose["left"].position.y * 25),
-                        )
-                        self.hand_left.setHpr(
-                            (self.vrControllerPose["left"].orientation.y * 100),
-                            (self.vrControllerPose["left"].orientation.x * 100),
-                            (self.vrControllerPose["left"].orientation.z * -100),
+                            (
+                                (self.vrControllerPose["left"].position.x)
+                                + self.vrControllerPosOffset[0]
+                            )
+                            * 30,
+                            (
+                                (self.vrControllerPose["left"].position.z)
+                                + self.vrControllerPosOffset[1]
+                            )
+                            * -30,
+                            (
+                                (self.vrControllerPose["left"].position.y)
+                                + self.vrControllerPosOffset[2]
+                            )
+                            * 30,
                         )
                         self.hand_right.setPos(
-                            (self.vrControllerPose["right"].position.x * -25),
-                            (self.vrControllerPose["right"].position.z * 25),
-                            (self.vrControllerPose["right"].position.y * -25),
+                            (
+                                (self.vrControllerPose["right"].position.x)
+                                + self.vrControllerPosOffset[0]
+                            )
+                            * 30,
+                            (
+                                (self.vrControllerPose["right"].position.z)
+                                + self.vrControllerPosOffset[1]
+                            )
+                            * -30,
+                            (
+                                (self.vrControllerPose["right"].position.y)
+                                + self.vrControllerPosOffset[2]
+                            )
+                            * 30,
+                        )
+                    except:
+                        pass
+                if autoControllerRotation:
+                    try:
+                        self.hand_left.setHpr(
+                            (
+                                (self.vrControllerPose["left"].orientation.y)
+                                + self.vrControllerHprOffset[0]
+                            )
+                            * 100,
+                            (
+                                (self.vrControllerPose["left"].orientation.x)
+                                + self.vrControllerHprOffset[1]
+                            )
+                            * 100,
+                            (
+                                (self.vrControllerPose["left"].orientation.z)
+                                + self.vrControllerHprOffset[2]
+                            )
+                            * -100,
                         )
                         self.hand_right.setHpr(
-                            (self.vrControllerPose["right"].orientation.y * -100),
-                            (self.vrControllerPose["right"].orientation.x * -100),
-                            (self.vrControllerPose["right"].orientation.z * 100),
+                            (
+                                (self.vrControllerPose["right"].orientation.y)
+                                + self.vrControllerHprOffset[0]
+                            )
+                            * 100,
+                            (
+                                (self.vrControllerPose["right"].orientation.x)
+                                + self.vrControllerHprOffset[1]
+                            )
+                            * 100,
+                            (
+                                (self.vrControllerPose["right"].orientation.z)
+                                + self.vrControllerHprOffset[2]
+                            )
+                            * -100,
                         )
                     except:
                         pass
@@ -227,6 +304,7 @@ class BaseVrApp(ShowBase):
                 ),
             )
             self.accept("r", resetView)
+            self.accept("q", lambda: exit(0))
 
         self.vrLens.setFov(FOV)
         self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
