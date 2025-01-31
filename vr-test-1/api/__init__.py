@@ -65,8 +65,6 @@ class BaseVrApp(ShowBase):
             self.cam_right_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
         self.vrCam = self.render.attachNewNode("vrCam")
-        self.focusObject = self.vrCam.attachNewNode("focusObject")
-        self.focusObject.setY(15)
         self.cam_left.reparentTo(self.vrCam)
         self.cam_right.reparentTo(self.vrCam)
         self.camRootNode = self.render.attachNewNode("camRootNode")
@@ -77,22 +75,33 @@ class BaseVrApp(ShowBase):
 
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
+        self.vrCamPosOffset = (0, 0, 0)
+        self.vrControllerPosOffset = (0, 0, 0)
+        self.vrCamHprOffset = (0, 0, 0)
+        self.vrControllerHprOffset = (0, 0, 0)
+
         self.lastException = ""
         self.lastExceptionTime = 0
+
+        self.handRootNode = self.render.attachNewNode("handRootNode")
+        self.hand_left = self.handRootNode.attachNewNode("hand_left")
+        self.hand_right = self.handRootNode.attachNewNode("hand_right")
+        self.vrControllerPose = None
 
         def getHeadsetTask(task):
             try:
                 self.vrCameraPose = main.pose
+                self.vrControllerPose = main.controller
                 if self.wantHeadsetControl:
                     self.vrCam.setPos(
-                        (self.vrCameraPose.position.x * -25) + self.vrCamPos[0],
-                        (self.vrCameraPose.position.z * 25) + self.vrCamPos[1],
-                        (self.vrCameraPose.position.y * 25) + self.vrCamPos[2],
+                        (self.vrCameraPose.position.x * 30) + self.vrCamPos[0],
+                        (self.vrCameraPose.position.z * -30) + self.vrCamPos[1],
+                        (self.vrCameraPose.position.y * 30) + self.vrCamPos[2],
                     )
                     self.vrCam.setHpr(
-                        (self.vrCameraPose.orientation.y * -100) + self.vrCamHpr[0],
-                        (self.vrCameraPose.orientation.x * -100) + self.vrCamHpr[1],
-                        (self.vrCameraPose.orientation.z * 100) + self.vrCamHpr[2],
+                        (self.vrCameraPose.orientation.y * 100) + self.vrCamHpr[0],
+                        (self.vrCameraPose.orientation.x * 100) + self.vrCamHpr[1],
+                        (self.vrCameraPose.orientation.z * -100) + self.vrCamHpr[2],
                     )
                     self.camera.setPos(self.vrCam.getPos())
                     self.camera.setHpr(self.vrCam.getHpr())
@@ -100,8 +109,29 @@ class BaseVrApp(ShowBase):
                     self.camLens.setAspectRatio(
                         self.lensResolution[0] / self.lensResolution[1]
                     )
-                    # self.cam_left.lookAt(self.focusObject)
-                    # self.cam_right.lookAt(self.focusObject)
+                    try:
+                        self.hand_left.setPos(
+                            (self.vrControllerPose["left"].position.x * 25),
+                            (self.vrControllerPose["left"].position.z * -25),
+                            (self.vrControllerPose["left"].position.y * 25),
+                        )
+                        self.hand_left.setHpr(
+                            (self.vrControllerPose["left"].orientation.y * 100),
+                            (self.vrControllerPose["left"].orientation.x * 100),
+                            (self.vrControllerPose["left"].orientation.z * -100),
+                        )
+                        self.hand_right.setPos(
+                            (self.vrControllerPose["right"].position.x * -25),
+                            (self.vrControllerPose["right"].position.z * 25),
+                            (self.vrControllerPose["right"].position.y * -25),
+                        )
+                        self.hand_right.setHpr(
+                            (self.vrControllerPose["right"].orientation.y * -100),
+                            (self.vrControllerPose["right"].orientation.x * -100),
+                            (self.vrControllerPose["right"].orientation.z * 100),
+                        )
+                    except:
+                        pass
             except Exception as e:
                 if str(e) != self.lastException:
                     print(str(e))
@@ -127,16 +157,20 @@ class BaseVrApp(ShowBase):
             self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
             self.cam_left.setPos(-0.25, 0, 0)
             self.cam_right.setPos(0.25, 0, 0)
-            # self.cam_left.lookAt(self.focusObject)
-            # self.cam_right.lookAt(self.focusObject),
+            self.vrCamPos = (0, 0, 0)
+            self.vrCamHpr = (0, 0, 0)
+            self.vrCamPosOffset = (0, 0, 0)
+            self.vrControllerPosOffset = (0, 0, 0)
+            self.vrCamHprOffset = (0, 0, 0)
+            self.vrControllerHprOffset = (0, 0, 0)
+            self.vrCam.setPos(self.vrCamPos)
 
         if wantDevMode:
-            self.accept("f", resetView)
             self.accept("v", self.toggle_dev_win_view)
             self.accept(
                 "p",
                 lambda: print(
-                    f"Lens FOV: {self.vrLens.getFov()}\nLens Distance: {self.cam_left.getX(), self.cam_right.getX()}\nFocus Y: {self.focusObject.getY()}\nImage Offset: {main.image_offset}"
+                    f"Lens FOV: {self.vrLens.getFov()}\nLens Distance: {self.cam_left.getX(), self.cam_right.getX()}\nImage Offset: {main.image_offset}"
                 ),
             )
             self.accept(
@@ -168,26 +202,12 @@ class BaseVrApp(ShowBase):
                 ),
             )
             self.accept(
-                "shift-wheel_up",
-                lambda: (
-                    self.focusObject.setY(self.focusObject.getY() + 1),
-                    print("Focus Y: ", self.focusObject.getY()),
-                ),
-            )
-            self.accept(
-                "shift-wheel_down",
-                lambda: (
-                    self.focusObject.setY(self.focusObject.getY() - 1),
-                    print("Focus Y: ", self.focusObject.getY()),
-                ),
-            )
-            self.accept(
                 "alt-wheel_up",
                 lambda: (
                     self.cam_left.setPos(self.cam_left.getX() - 0.01, 0, 0),
                     self.cam_right.setPos(self.cam_right.getX() + 0.01, 0, 0),
                     print(
-                        "Lens Distance: ", (self.cam_left.getX(),self.cam_right.getX())
+                        "Lens Distance: ", (self.cam_left.getX(), self.cam_right.getX())
                     ),
                 ),
             )
@@ -201,6 +221,7 @@ class BaseVrApp(ShowBase):
                     ),
                 ),
             )
+            self.accept("r", resetView)
 
         self.vrLens.setFov(FOV)
         self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
