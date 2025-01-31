@@ -7,10 +7,9 @@ if not sys.platform == "win32":
     if 1 == 1:
         exit("This API is only supported on Windows.")
 
-from OpenGL import GL  # pip install PyOpenGL
-import xr  # pip install pyopenxr
+from OpenGL import GL
+import xr
 import numpy as np
-from PIL import Image
 import cv2
 from threading import Thread as _Thread
 

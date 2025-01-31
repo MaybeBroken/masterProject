@@ -1,4 +1,4 @@
-from api import BaseVrApp
+from api import *
 
 
 class VrApp(BaseVrApp):
