@@ -59,6 +59,10 @@ class VrApp(BaseVrApp):
         self.boxModel.setScale(1)
         self.boxModel.instanceTo(self.hand_left)
         self.boxModel.instanceTo(self.hand_right)
+        self.skybox = self.loader.load_model("skybox/box.bam")
+        self.skybox.reparent_to(self.render)
+        self.skybox.setScale(100)
+        self.skybox.setBin("background", 0)
         self.setupControls()
         self.taskMgr.add(self.update, "update")
 
