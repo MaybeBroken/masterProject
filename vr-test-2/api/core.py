@@ -393,6 +393,15 @@ class InputState(Structure):
         ("hand_scale", c_float * len(Side)),
         ("hand_active", xr.Bool32 * len(Side)),
     ]
+    action_set = None
+    grab_action = None
+    pose_action = None
+    vibrate_action = None
+    quit_action = None
+    hand_subaction_path = None
+    hand_space = None
+    hand_scale = None
+    hand_active = None
 
 
 class main:
@@ -404,8 +413,8 @@ class main:
         self.controller = {"left": None, "right": None}
         self.context = None  # Add this line to store the context object
         self.session = None
-        self.input = None
         self.instance = None
+        self.input = InputState()
 
         while True:
             try:
@@ -422,8 +431,6 @@ class main:
 
         frame_data_left = np.array(frame_left, np.uint8)
         frame_data_right = np.array(frame_right, np.uint8)
-
-        self.input = InputState()
 
         # ContextObject is a high level pythonic class meant to keep simple cases simple.
         with xr.ContextObject(
@@ -849,7 +856,7 @@ class main:
             if grab_value.is_active:
                 # Scale the rendered hand by 1.0f (open) to 0.5f (fully squeezed).
                 self.input.hand_scale[hand] = 1 - 0.5 * grab_value.current_state
-                if grab_value.current_state > 0.9:
+                if grab_value.current_state > 0.8:
                     vibration = xr.HapticVibration(
                         amplitude=0.5,
                         duration=xr.MIN_HAPTIC_DURATION,
