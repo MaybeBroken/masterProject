@@ -402,6 +402,7 @@ class InputState(Structure):
     hand_space = None
     hand_scale = None
     hand_active = None
+    hand_triggers: dict = None
 
 
 class main:

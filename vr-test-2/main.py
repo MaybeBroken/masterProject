@@ -60,7 +60,7 @@ class VrApp(BaseVrApp):
             autoControllerPositioning=True,
             autoControllerRotation=True,
         )
-        self.model = self.loader.load_model("control1.bam")
+        self.model = self.loader.load_model("models/control1.bam")
         self.model.reparent_to(self.render)
         self.model.setScale(13)
         self.model.setPos(0, 0, -8.5)
@@ -84,6 +84,8 @@ class VrApp(BaseVrApp):
         self.vrCamHpr = (0, 0, 0)
         self.sphereModel = self.loader.load_model("models/misc/sphere")
         self.sphereModel.setScale(0.7)
+        self.sphereModel.setColor(0.5, 0.5, 0.5, 1)
+        self.sphereModel.setBin("fixed", 10)
         self.sphereModel.instanceTo(self.hand_left)
         self.sphereModel.instanceTo(self.hand_right)
         self.skybox = self.loader.load_model("skybox/box.bam")
