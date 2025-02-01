@@ -1,6 +1,15 @@
 from api import *
-from panda3d.core import loadPrcFileData
-from math import sin, cos, radians, degrees, atan2, sqrt, pi
+from panda3d.core import *
+from panda3d.core import (
+    loadPrcFileData,
+    AmbientLight,
+    DirectionalLight,
+    Texture,
+    Shader,
+    Vec4,
+)
+from direct.filter.FilterManager import FilterManager
+from math import sin, cos, pi
 from screeninfo import get_monitors
 import os
 import sys
@@ -52,6 +61,16 @@ class VrApp(BaseVrApp):
         self.model = self.loader.load_model("control1.bam")
         self.model.reparent_to(self.render)
         self.model.setScale(3)
+
+        self.render.setShaderAuto()
+        self.sceneAmbientLight = AmbientLight("sceneAmbientLight")
+        self.sceneAmbientLight.setColor((0.5, 0.5, 0.5, 1))
+        self.render.setLight(self.sceneAmbientLight)
+        self.sceneDirectionalLight = DirectionalLight("sceneDirectionalLight")
+        self.sceneDirectionalLight.setDirection((-1, -1, -1))
+        self.sceneDirectionalLight.setColor((0.8, 0.8, 0.8, 1))
+        self.render.setLight(self.sceneDirectionalLight)
+
         self.model.setHpr(180, 0, 0)
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
@@ -61,9 +80,38 @@ class VrApp(BaseVrApp):
         self.boxModel.instanceTo(self.hand_right)
         self.skybox = self.loader.load_model("skybox/box.bam")
         self.skybox.reparent_to(self.render)
-        self.skybox.setScale(100)
+        self.skybox.setScale(15)
         self.skybox.setBin("background", 0)
         self.setupControls()
+
+        # Threshold (x,y,z) and brightness (w) settings
+        threshold = Vec4(0.4, 0.4, 0.4, 1.0)  # <----
+
+        # FilterManager
+        manager = FilterManager(self.win, self.cam)
+        tex1 = Texture()
+        tex2 = Texture()
+        tex3 = Texture()
+        finalquad = manager.renderSceneInto(colortex=tex1)
+        # First step - threshold and radial blur
+        interquad = manager.renderQuadInto(colortex=tex2)
+        interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
+        interquad.setShaderInput("tex1", tex1)
+        interquad.setShaderInput("threshold", threshold)
+        # Second step - hardcoded fast gaussian blur.
+        # Not very important. This step can be omitted to improve performance
+        # with some minor changes in lens_flare.sha
+        interquad2 = manager.renderQuadInto(colortex=tex3)
+        interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
+        interquad2.setShaderInput("tex2", tex2)
+        # Final - Make lens flare and blend it with the main scene picture
+        finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
+        finalquad.setShaderInput("tex1", tex1)
+        finalquad.setShaderInput("tex2", tex2)
+        finalquad.setShaderInput("tex3", tex3)
+        # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
+        # finalquad.setShaderInput("lf_settings", lf_settings)
+        # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
         self.taskMgr.add(self.update, "update")
 
     def update(self, task):
