@@ -87,7 +87,8 @@ class BaseVrApp(ShowBase):
         self.buffer_right.addRenderTexture(
             self.cam_right_tex, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
-        self.vrCam = self.render.attachNewNode("vrCam")
+        self.player = self.render.attachNewNode("vrCamRoot")
+        self.vrCam = self.player.attachNewNode("vrCam")
         self.cam_left.reparentTo(self.vrCam)
         self.cam_right.reparentTo(self.vrCam)
         self.camRootNode = self.render.attachNewNode("camRootNode")
@@ -105,13 +106,16 @@ class BaseVrApp(ShowBase):
         self.lastException = ""
         self.lastExceptionTime = 0
 
-        self.handRootNode = self.render.attachNewNode("handRootNode")
+        self.handRootNode = self.player.attachNewNode("handRootNode")
         self.hand_left = self.handRootNode.attachNewNode("hand_left")
         self.hand_right = self.handRootNode.attachNewNode("hand_right")
         self.vrControllerPose = None
 
         def getHeadsetTask(task):
             try:
+                while main.pose_quat is None:
+                    GraphicsEngine.get_global_ptr().render_frame()
+                    sleep(0.01)
                 self.vrCameraPose = main.pose_quat
                 self.vrControllerPose = main.controller
                 self.camera.setPos(self.vrCam.getPos())
@@ -179,54 +183,30 @@ class BaseVrApp(ShowBase):
                         pass
                 if autoControllerRotation:
                     try:
-                        self.hand_left.setHpr(
-                            (
-                                (self.vrControllerPose["left"].orientation.y)
-                                + self.vrControllerHprOffset[0]
+                        self.hand_left.setQuat(
+                            LQuaternionf(
+                                -self.vrControllerPose["left"].orientation.w,
+                                -self.vrControllerPose["left"].orientation.x,
+                                -self.vrControllerPose["left"].orientation.z,
+                                -self.vrControllerPose["left"].orientation.y,
                             )
-                            * 36,
-                            (
-                                (self.vrControllerPose["left"].orientation.x)
-                                + self.vrControllerHprOffset[1]
-                            )
-                            * 36,
-                            (
-                                (self.vrControllerPose["left"].orientation.z)
-                                + self.vrControllerHprOffset[2]
-                            )
-                            * -36,
                         )
-                        self.hand_right.setHpr(
-                            (
-                                (self.vrControllerPose["right"].orientation.y)
-                                + self.vrControllerHprOffset[0]
+                        self.hand_left.setR(-self.hand_left.getR())
+                        self.hand_right.setQuat(
+                            LQuaternionf(
+                                -self.vrControllerPose["right"].orientation.w,
+                                -self.vrControllerPose["right"].orientation.x,
+                                -self.vrControllerPose["right"].orientation.z,
+                                -self.vrControllerPose["right"].orientation.y,
                             )
-                            * 36,
-                            (
-                                (self.vrControllerPose["right"].orientation.x)
-                                + self.vrControllerHprOffset[1]
-                            )
-                            * 36,
-                            (
-                                (self.vrControllerPose["right"].orientation.z)
-                                + self.vrControllerHprOffset[2]
-                            )
-                            * -36,
                         )
+                        self.hand_right.setR(-self.hand_right.getR())
                     except:
                         pass
             except Exception as e:
-                if str(e) != self.lastException:
-                    print(str(e))
-                    print("\n")
-                    sleep(0.1)
-                else:
-                    self.lastExceptionTime += 1
-                    print(
-                        f"\033[FLast exception repeated {self.lastExceptionTime} times"
-                    )
-                    sleep(0.75)
-                self.lastException = str(e)
+                print(str(e))
+                print("\n")
+                sleep(0.1)
 
             return task.cont
 
@@ -369,17 +349,9 @@ class BaseVrApp(ShowBase):
                     # Add a small delay to allow the window to refresh
                     cv2.waitKey(1)
                 except Exception as e:
-                    if str(e) != self.lastException:
-                        print(str(e))
-                        print()
-                        sleep(0.1)
-                    else:
-                        self.lastExceptionTime += 1
-                        print(
-                            f"\033[FLast exception repeated {self.lastExceptionTime} times"
-                        )
-                        sleep(0.75)
-                    self.lastException = str(e)
+                    print(str(e))
+                    print()
+                    sleep(0.1)
 
         # Run the frame update in a separate thread to avoid blocking the main loop
         _Thread(target=update_frames, daemon=True).start()
@@ -397,7 +369,6 @@ class main:
         self.image_offset = 0.1225
         self.lastException = ""
         self.lastExceptionTime = 0
-        self.pose_p3d = None
         self.pose_quat = None
         self.controller = {"left": None, "right": None}
         self.context = None  # Add this line to store the context object
@@ -409,17 +380,9 @@ class main:
                     cam_right_tex
                     break
                 except NameError as e:
-                    if str(e) != self.lastException:
-                        print(str(e))
-                        print("\n")
-                        sleep(0.1)
-                    else:
-                        self.lastExceptionTime += 1
-                        print(
-                            f"\033[FLast exception repeated {self.lastExceptionTime} times"
-                        )
-                        sleep(0.75)
-                    self.lastException = str(e)
+                    print(str(e))
+                    print("\n")
+                    sleep(0.1)
 
             frame_left = self.get_camera_image(cam_left_tex)
             frame_right = self.get_camera_image(cam_right_tex)
@@ -635,7 +598,6 @@ class main:
                     )
                     flags = xr.ViewStateFlags(view_state.view_state_flags)
                     if flags & xr.ViewStateFlags.ORIENTATION_VALID_BIT:
-                        self.pose_p3d = self.convert_pose_to_panda3d(views[0].pose)
                         self.pose_quat = views[0].pose
                     else:
                         self.pose = None
@@ -727,32 +689,6 @@ class main:
                                     self.controller["left"] = space_location.pose
                                 elif index == 1:
                                     self.controller["right"] = space_location.pose
-
-    def convert_pose_to_panda3d(self, pose):
-        position = pose.position
-        orientation = pose.orientation
-        position = LVecBase3(position.x, position.z, position.y)
-        orientation = Quaternion(
-            orientation.w, orientation.x, -orientation.z, orientation.y
-        )
-        orientation = orientation.yaw_pitch_roll
-
-        class _Pose:
-            def __init__(self, position, orientation):
-                class _position:
-                    x = position[0]
-                    y = position[1]
-                    z = position[2]
-
-                class _orientation:
-                    x = orientation[2]
-                    y = orientation[0]
-                    z = orientation[1]
-
-                self.position = _position
-                self.orientation = _orientation
-
-        return _Pose(position, orientation)
 
     def get_camera_image(self, texture):
         while not texture.hasRamImage():

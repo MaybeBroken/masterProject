@@ -61,7 +61,7 @@ class VrApp(BaseVrApp):
         self.model = self.loader.load_model("control1.bam")
         self.model.reparent_to(self.render)
         self.model.setScale(15)
-        self.model.setPos(0, 0, -7.5)
+        self.model.setPos(0, -2, -8.5)
         self.model.setHpr(-90, 0, 0)
 
         self.render.setShaderAuto()
@@ -145,7 +145,7 @@ class VrApp(BaseVrApp):
         if self.keyMap["down"]:
             z_movement -= dt * playerMoveSpeed
 
-        self.vrCam.setPos(
+        self.player.setPos(
             self.vrCam.getX() + x_movement,
             self.vrCam.getY() + y_movement,
             self.vrCam.getZ() + z_movement,
