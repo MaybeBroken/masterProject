@@ -2,10 +2,8 @@
 This is the utils module. It contains utility functions for mathematical operations, file handling, and other miscellaneous tasks.
 """
 
-import math
 import os
 import random
-import re
 import string
 import shutil
 import time
