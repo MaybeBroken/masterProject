@@ -23,10 +23,15 @@ from panda3d.core import (
     PNMImage,
     Texture,
     PerspectiveLens,
+    ConfigVariableString,
+    LVecBase3,
+    LQuaternionf,
 )
 from direct.showbase.ShowBase import ShowBase
 from time import sleep
 import ctypes
+from math import asin, degrees
+from pyquaternion import Quaternion
 
 
 class BaseVrApp(ShowBase):
@@ -44,6 +49,10 @@ class BaseVrApp(ShowBase):
         _Thread(target=main.start).start()
         self.setBackgroundColor(0, 0, 0)
         self.lensResolution = lensResolution
+        self.wantDevMode = wantDevMode
+        self.FOV = FOV
+        if wantDevMode:
+            ConfigVariableString.setValue("want-pstats", "1")
 
         self.camList = []
         self.view_left = True  # Flag to track which buffer to display
@@ -103,7 +112,7 @@ class BaseVrApp(ShowBase):
 
         def getHeadsetTask(task):
             try:
-                self.vrCameraPose = main.pose
+                self.vrCameraPose = main.pose_quat
                 self.vrControllerPose = main.controller
                 self.camera.setPos(self.vrCam.getPos())
                 self.camera.setHpr(self.vrCam.getHpr())
@@ -121,23 +130,15 @@ class BaseVrApp(ShowBase):
                         + self.vrCamPos[2],
                     )
                 if autoCamRotation:
-                    self.vrCam.setHpr(
-                        (
-                            (self.vrCameraPose.orientation.y + self.vrCamHprOffset[0])
-                            * 100
+                    self.vrCam.setQuat(
+                        LQuaternionf(
+                            -self.vrCameraPose.orientation.w,
+                            -self.vrCameraPose.orientation.x,
+                            -self.vrCameraPose.orientation.z,
+                            -self.vrCameraPose.orientation.y,
                         )
-                        + self.vrCamHpr[0],
-                        (
-                            (self.vrCameraPose.orientation.x + self.vrCamHprOffset[1])
-                            * 100
-                        )
-                        + self.vrCamHpr[1],
-                        (
-                            (self.vrCameraPose.orientation.z + self.vrCamHprOffset[2])
-                            * -100
-                        )
-                        + self.vrCamHpr[2],
                     )
+                    self.vrCam.setR(-self.vrCam.getR())
                 if autoControllerPositioning:
                     try:
                         self.hand_left.setPos(
@@ -183,41 +184,41 @@ class BaseVrApp(ShowBase):
                                 (self.vrControllerPose["left"].orientation.y)
                                 + self.vrControllerHprOffset[0]
                             )
-                            * 100,
+                            * 36,
                             (
                                 (self.vrControllerPose["left"].orientation.x)
                                 + self.vrControllerHprOffset[1]
                             )
-                            * 100,
+                            * 36,
                             (
                                 (self.vrControllerPose["left"].orientation.z)
                                 + self.vrControllerHprOffset[2]
                             )
-                            * -100,
+                            * -36,
                         )
                         self.hand_right.setHpr(
                             (
                                 (self.vrControllerPose["right"].orientation.y)
                                 + self.vrControllerHprOffset[0]
                             )
-                            * 100,
+                            * 36,
                             (
                                 (self.vrControllerPose["right"].orientation.x)
                                 + self.vrControllerHprOffset[1]
                             )
-                            * 100,
+                            * 36,
                             (
                                 (self.vrControllerPose["right"].orientation.z)
                                 + self.vrControllerHprOffset[2]
                             )
-                            * -100,
+                            * -36,
                         )
                     except:
                         pass
             except Exception as e:
                 if str(e) != self.lastException:
                     print(str(e))
-                    print()
+                    print("\n")
                     sleep(0.1)
                 else:
                     self.lastExceptionTime += 1
@@ -230,24 +231,11 @@ class BaseVrApp(ShowBase):
             return task.cont
 
         self.taskMgr.add(getHeadsetTask, "getHeadsetTask")
-        self.doMethodLater(
-            2, lambda task: self.toggle_dev_win_view(), "toggle_dev_win_view"
-        )
-
-        def resetView():
-            self.vrLens.setFov(FOV)
-            self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
-            self.cam_left.setPos(-0.25, 0, 0)
-            self.cam_right.setPos(0.25, 0, 0)
-            self.vrCamPos = (0, 0, 0)
-            self.vrCamHpr = (0, 0, 0)
-            self.vrCamPosOffset = (0, 0, 0)
-            self.vrControllerPosOffset = (0, 0, 0)
-            self.vrCamHprOffset = (0, 0, 0)
-            self.vrControllerHprOffset = (0, 0, 0)
-            self.vrCam.setPos(self.vrCamPos)
 
         if wantDevMode:
+            self.doMethodLater(
+                2, lambda task: self.toggle_dev_win_view(), "toggle_dev_win_view"
+            )
             self.accept("v", self.toggle_dev_win_view)
             self.accept(
                 "p",
@@ -303,13 +291,38 @@ class BaseVrApp(ShowBase):
                     ),
                 ),
             )
-            self.accept("r", resetView)
-            self.accept("q", lambda: exit(0))
+            self.accept("r", self.reset_view_orientation)
 
         self.vrLens.setFov(FOV)
         self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
         self.cam_left.setPos(-0.25, 0, 0)
         self.cam_right.setPos(0.25, 0, 0)
+
+    def resetView(self):
+        self.vrLens.setFov(self.FOV)
+        self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
+        self.cam_left.setPos(-0.25, 0, 0)
+        self.cam_right.setPos(0.25, 0, 0)
+        self.vrCamPos = (0, 0, 0)
+        self.vrCamHpr = (0, 0, 0)
+        self.vrCamPosOffset = (0, 0, 0)
+        self.vrControllerPosOffset = (0, 0, 0)
+        self.vrCamHprOffset = (0, 0, 0)
+        self.vrControllerHprOffset = (0, 0, 0)
+        self.vrCam.setPos(self.vrCamPos)
+
+    def reset_view_orientation(self):
+        self.vrCamPosOffset = (
+            -self.vrCameraPose.position.x,
+            -self.vrCameraPose.position.y,
+            -self.vrCameraPose.position.z,
+        )
+        self.vrCamHprOffset = (
+            -self.vrCameraPose.orientation.y,
+            -self.vrCameraPose.orientation.x,
+            -self.vrCameraPose.orientation.z,
+        )
+        self.resetView()
 
     def make_buffer(self):
         winprops = WindowProperties.size(
@@ -338,8 +351,12 @@ class BaseVrApp(ShowBase):
                     frame_left = self.get_camera_image(self.cam_left_tex)
                     frame_right = self.get_camera_image(self.cam_right_tex)
 
-                    frame_data_left = np.array(frame_left, np.uint8)
-                    frame_data_right = np.array(frame_right, np.uint8)
+                    frame_data_left = np.flipud(
+                        np.array(frame_left, dtype=np.uint8)[:, :, ::-1]
+                    )
+                    frame_data_right = np.flipud(
+                        np.array(frame_right, dtype=np.uint8)[:, :, ::-1]
+                    )
 
                     # Create or update windows to display the frames
                     left_window_name = "Left View"
@@ -351,7 +368,6 @@ class BaseVrApp(ShowBase):
 
                     # Add a small delay to allow the window to refresh
                     cv2.waitKey(1)
-                    sleep(0.01)
                 except Exception as e:
                     if str(e) != self.lastException:
                         print(str(e))
@@ -381,8 +397,10 @@ class main:
         self.image_offset = 0.1225
         self.lastException = ""
         self.lastExceptionTime = 0
-        self.pose = None
+        self.pose_p3d = None
+        self.pose_quat = None
         self.controller = {"left": None, "right": None}
+        self.context = None  # Add this line to store the context object
 
         while True:
             while True:
@@ -393,7 +411,7 @@ class main:
                 except NameError as e:
                     if str(e) != self.lastException:
                         print(str(e))
-                        print()
+                        print("\n")
                         sleep(0.1)
                     else:
                         self.lastExceptionTime += 1
@@ -418,7 +436,7 @@ class main:
                     ],
                 ),
             ) as context:
-
+                self.context = context  # Store the context object
                 texture_id_left = GL.glGenTextures(1)
                 texture_id_right = GL.glGenTextures(1)
 
@@ -616,11 +634,12 @@ class main:
                         ),
                     )
                     flags = xr.ViewStateFlags(view_state.view_state_flags)
-                    if flags & xr.ViewStateFlags.POSITION_VALID_BIT:
-                        view = views[xr.Eye.LEFT]
-                        self.pose = view.pose
+                    if flags & xr.ViewStateFlags.ORIENTATION_VALID_BIT:
+                        self.pose_p3d = self.convert_pose_to_panda3d(views[0].pose)
+                        self.pose_quat = views[0].pose
                     else:
-                        None
+                        self.pose = None
+
                     frame = self.get_camera_image(cam_left_tex)
                     if frame is not None:
                         frame_left = self.get_camera_image(cam_left_tex)
@@ -703,10 +722,37 @@ class main:
                                 space_location.location_flags
                                 & xr.SPACE_LOCATION_POSITION_VALID_BIT
                             ):
+
                                 if index == 0:
                                     self.controller["left"] = space_location.pose
                                 elif index == 1:
                                     self.controller["right"] = space_location.pose
+
+    def convert_pose_to_panda3d(self, pose):
+        position = pose.position
+        orientation = pose.orientation
+        position = LVecBase3(position.x, position.z, position.y)
+        orientation = Quaternion(
+            orientation.w, orientation.x, -orientation.z, orientation.y
+        )
+        orientation = orientation.yaw_pitch_roll
+
+        class _Pose:
+            def __init__(self, position, orientation):
+                class _position:
+                    x = position[0]
+                    y = position[1]
+                    z = position[2]
+
+                class _orientation:
+                    x = orientation[2]
+                    y = orientation[0]
+                    z = orientation[1]
+
+                self.position = _position
+                self.orientation = _orientation
+
+        return _Pose(position, orientation)
 
     def get_camera_image(self, texture):
         while not texture.hasRamImage():

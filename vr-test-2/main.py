@@ -176,6 +176,7 @@ class VrApp(BaseVrApp):
         self.accept("space-up", self.updateKeyMap, ["up", False])
         self.accept("shift", self.updateKeyMap, ["down", True])
         self.accept("shift-up", self.updateKeyMap, ["down", False])
+        self.accept("r", self.reset_view_orientation)
 
     def updateKeyMap(self, key, value):
         self.keyMap[key] = value
