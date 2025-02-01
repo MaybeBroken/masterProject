@@ -44,14 +44,14 @@ clock-frame-rate 0
 
 
 class Wvars:
-    speed = 150
+    speed = 50
     swingSpeed = 10
 
 
 class VrApp(BaseVrApp):
     def __init__(self):
         super().__init__(
-            wantDevMode=True,
+            wantDevMode=False,
             lensResolution=(1000, 1000),
             FOV=95.5,
             autoCamRotation=True,
@@ -60,18 +60,24 @@ class VrApp(BaseVrApp):
         )
         self.model = self.loader.load_model("control1.bam")
         self.model.reparent_to(self.render)
-        self.model.setScale(3)
+        self.model.setScale(15)
+        self.model.setPos(0, 0, -7.5)
+        self.model.setHpr(-90, 0, 0)
 
         self.render.setShaderAuto()
         self.sceneAmbientLight = AmbientLight("sceneAmbientLight")
         self.sceneAmbientLight.setColor((0.5, 0.5, 0.5, 1))
-        self.render.setLight(self.sceneAmbientLight)
+        self.sceneAmbientLightNodePath = self.render.attachNewNode(
+            self.sceneAmbientLight
+        )
+        self.render.setLight(self.sceneAmbientLightNodePath)
         self.sceneDirectionalLight = DirectionalLight("sceneDirectionalLight")
         self.sceneDirectionalLight.setDirection((-1, -1, -1))
         self.sceneDirectionalLight.setColor((0.8, 0.8, 0.8, 1))
-        self.render.setLight(self.sceneDirectionalLight)
-
-        self.model.setHpr(180, 0, 0)
+        self.sceneDirectionalLightNodePath = self.render.attachNewNode(
+            self.sceneDirectionalLight
+        )
+        self.render.setLight(self.sceneDirectionalLightNodePath)
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
         self.boxModel = self.loader.load_model("models/box")
@@ -80,38 +86,36 @@ class VrApp(BaseVrApp):
         self.boxModel.instanceTo(self.hand_right)
         self.skybox = self.loader.load_model("skybox/box.bam")
         self.skybox.reparent_to(self.render)
-        self.skybox.setScale(15)
+        self.skybox.setScale(10000)
         self.skybox.setBin("background", 0)
         self.setupControls()
 
-        # Threshold (x,y,z) and brightness (w) settings
-        threshold = Vec4(0.4, 0.4, 0.4, 1.0)  # <----
+        for win, cam in [
+            [self.win, self.cam],
+            [self.buffer_left, self.cam_left],
+            [self.buffer_right, self.cam_right],
+        ]:
+            threshold = Vec4(0.88, 0.9, 0.85, 0.4)
+            manager = FilterManager(win, cam)
+            tex1 = Texture()
+            tex2 = Texture()
+            tex3 = Texture()
+            finalquad = manager.renderSceneInto(colortex=tex1)
+            interquad = manager.renderQuadInto(colortex=tex2)
+            interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
+            interquad.setShaderInput("tex1", tex1)
+            interquad.setShaderInput("threshold", threshold)
+            interquad2 = manager.renderQuadInto(colortex=tex3)
+            interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
+            interquad2.setShaderInput("tex2", tex2)
+            finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
+            finalquad.setShaderInput("tex1", tex1)
+            finalquad.setShaderInput("tex2", tex2)
+            finalquad.setShaderInput("tex3", tex3)
+            # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
+            # finalquad.setShaderInput("lf_settings", lf_settings)
+            # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
 
-        # FilterManager
-        manager = FilterManager(self.win, self.cam)
-        tex1 = Texture()
-        tex2 = Texture()
-        tex3 = Texture()
-        finalquad = manager.renderSceneInto(colortex=tex1)
-        # First step - threshold and radial blur
-        interquad = manager.renderQuadInto(colortex=tex2)
-        interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
-        interquad.setShaderInput("tex1", tex1)
-        interquad.setShaderInput("threshold", threshold)
-        # Second step - hardcoded fast gaussian blur.
-        # Not very important. This step can be omitted to improve performance
-        # with some minor changes in lens_flare.sha
-        interquad2 = manager.renderQuadInto(colortex=tex3)
-        interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
-        interquad2.setShaderInput("tex2", tex2)
-        # Final - Make lens flare and blend it with the main scene picture
-        finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
-        finalquad.setShaderInput("tex1", tex1)
-        finalquad.setShaderInput("tex2", tex2)
-        finalquad.setShaderInput("tex3", tex3)
-        # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
-        # finalquad.setShaderInput("lf_settings", lf_settings)
-        # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
         self.taskMgr.add(self.update, "update")
 
     def update(self, task):
