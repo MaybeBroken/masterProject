@@ -39,12 +39,13 @@ frame-rate-meter-update-interval 0.1
 clock-mode normal
 sync-video 0
 clock-frame-rate 0
+window-title Vr-Test-2
 """,
 )
 
 
 class Wvars:
-    speed = 50
+    speed = 0.8
     swingSpeed = 10
 
 
@@ -54,14 +55,15 @@ class VrApp(BaseVrApp):
             wantDevMode=False,
             lensResolution=(1000, 1000),
             FOV=95.5,
+            autoCamPositioning=True,
             autoCamRotation=True,
             autoControllerPositioning=True,
             autoControllerRotation=True,
         )
         self.model = self.loader.load_model("control1.bam")
         self.model.reparent_to(self.render)
-        self.model.setScale(15)
-        self.model.setPos(0, -2, -8.5)
+        self.model.setScale(13)
+        self.model.setPos(0, 0, -8.5)
         self.model.setHpr(-90, 0, 0)
 
         self.render.setShaderAuto()
@@ -80,10 +82,10 @@ class VrApp(BaseVrApp):
         self.render.setLight(self.sceneDirectionalLightNodePath)
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
-        self.boxModel = self.loader.load_model("models/box")
-        self.boxModel.setScale(1)
-        self.boxModel.instanceTo(self.hand_left)
-        self.boxModel.instanceTo(self.hand_right)
+        self.sphereModel = self.loader.load_model("models/misc/sphere")
+        self.sphereModel.setScale(0.7)
+        self.sphereModel.instanceTo(self.hand_left)
+        self.sphereModel.instanceTo(self.hand_right)
         self.skybox = self.loader.load_model("skybox/box.bam")
         self.skybox.reparent_to(self.render)
         self.skybox.setScale(10000)
@@ -126,29 +128,24 @@ class VrApp(BaseVrApp):
         y_movement = 0
         z_movement = 0
 
+        if self.keyMap["forward"]:
+            y_movement = playerMoveSpeed
+        if self.keyMap["backward"]:
+            y_movement = -playerMoveSpeed
+        if self.keyMap["left"]:
+            x_movement = -playerMoveSpeed
+        if self.keyMap["right"]:
+            x_movement = playerMoveSpeed
+        if self.keyMap["up"]:
+            z_movement = playerMoveSpeed
+        if self.keyMap["down"]:
+            z_movement = -playerMoveSpeed
         dt = globalClock.getDt()  # type: ignore
 
-        if self.keyMap["forward"]:
-            x_movement -= dt * playerMoveSpeed * sin(degToRad(self.vrCam.getH()))
-            y_movement += dt * playerMoveSpeed * cos(degToRad(self.vrCam.getH()))
-        if self.keyMap["backward"]:
-            x_movement += dt * playerMoveSpeed * sin(degToRad(self.vrCam.getH()))
-            y_movement -= dt * playerMoveSpeed * cos(degToRad(self.vrCam.getH()))
-        if self.keyMap["left"]:
-            x_movement -= dt * playerMoveSpeed * cos(degToRad(self.vrCam.getH()))
-            y_movement -= dt * playerMoveSpeed * sin(degToRad(self.vrCam.getH()))
-        if self.keyMap["right"]:
-            x_movement += dt * playerMoveSpeed * cos(degToRad(self.vrCam.getH()))
-            y_movement += dt * playerMoveSpeed * sin(degToRad(self.vrCam.getH()))
-        if self.keyMap["up"]:
-            z_movement += dt * playerMoveSpeed
-        if self.keyMap["down"]:
-            z_movement -= dt * playerMoveSpeed
-
         self.player.setPos(
-            self.vrCam.getX() + x_movement,
-            self.vrCam.getY() + y_movement,
-            self.vrCam.getZ() + z_movement,
+            self.player.getX() + x_movement,
+            self.player.getY() + y_movement,
+            self.player.getZ() + z_movement,
         )
 
         return result

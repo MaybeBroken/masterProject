@@ -91,15 +91,15 @@ class BaseVrApp(ShowBase):
         self.vrCam = self.player.attachNewNode("vrCam")
         self.cam_left.reparentTo(self.vrCam)
         self.cam_right.reparentTo(self.vrCam)
-        self.camRootNode = self.render.attachNewNode("camRootNode")
+        self.camRootNode = self.player.attachNewNode("camRootNode")
         self.vrCam.reparentTo(self.camRootNode)
         self.camera.reparentTo(self.camRootNode)
         self.vrCameraPose = None
 
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
-        self.vrCamPosOffset = (0, 0, 0)
-        self.vrControllerPosOffset = (0, 0, 0)
+        self.vrCamPosOffset = (0, 0, -1.6)
+        self.vrControllerPosOffset = (0, 0, -1.6)
         self.vrCamHprOffset = (0, 0, 0)
         self.vrControllerHprOffset = (0, 0, 0)
 
@@ -126,11 +126,11 @@ class BaseVrApp(ShowBase):
                 )
                 if autoCamPositioning:
                     self.vrCam.setPos(
-                        ((self.vrCameraPose.position.x + self.vrCamPosOffset[0]) * 30)
+                        ((self.vrCameraPose.position.x + self.vrCamPosOffset[0]) * 7)
                         + self.vrCamPos[0],
-                        ((self.vrCameraPose.position.z + self.vrCamPosOffset[1]) * -30)
+                        ((self.vrCameraPose.position.z + self.vrCamPosOffset[1]) * -7)
                         + self.vrCamPos[1],
-                        ((self.vrCameraPose.position.y + self.vrCamPosOffset[2]) * 30)
+                        ((self.vrCameraPose.position.y + self.vrCamPosOffset[2]) * 7)
                         + self.vrCamPos[2],
                     )
                 if autoCamRotation:
@@ -150,34 +150,34 @@ class BaseVrApp(ShowBase):
                                 (self.vrControllerPose["left"].position.x)
                                 + self.vrControllerPosOffset[0]
                             )
-                            * 30,
+                            * 7,
                             (
                                 (self.vrControllerPose["left"].position.z)
                                 + self.vrControllerPosOffset[1]
                             )
-                            * -30,
+                            * -7,
                             (
                                 (self.vrControllerPose["left"].position.y)
                                 + self.vrControllerPosOffset[2]
                             )
-                            * 30,
+                            * 7,
                         )
                         self.hand_right.setPos(
                             (
                                 (self.vrControllerPose["right"].position.x)
                                 + self.vrControllerPosOffset[0]
                             )
-                            * 30,
+                            * 7,
                             (
                                 (self.vrControllerPose["right"].position.z)
                                 + self.vrControllerPosOffset[1]
                             )
-                            * -30,
+                            * -7,
                             (
                                 (self.vrControllerPose["right"].position.y)
                                 + self.vrControllerPosOffset[2]
                             )
-                            * 30,
+                            * 7,
                         )
                     except:
                         pass
@@ -286,7 +286,7 @@ class BaseVrApp(ShowBase):
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
         self.vrCamPosOffset = (0, 0, 0)
-        self.vrControllerPosOffset = (0, 0, 0)
+        self.vrControllerPosOffset = (0, 0, -0.8)
         self.vrCamHprOffset = (0, 0, 0)
         self.vrControllerHprOffset = (0, 0, 0)
         self.vrCam.setPos(self.vrCamPos)
