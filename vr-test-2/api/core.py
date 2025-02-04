@@ -4,8 +4,7 @@
 import sys
 
 if not sys.platform == "win32":
-    if 1 == 1:
-        exit("This API is only supported on Windows.")
+    exit("This API is only supported on Windows.")
 
 from OpenGL import GL
 import xr

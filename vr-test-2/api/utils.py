@@ -7,8 +7,7 @@ import random
 import string
 import shutil
 import time
-import opensimplex
-
+# import opensimplex
 
 class Misc:
     def get_random_string(length=10):
@@ -100,16 +99,19 @@ class File:
 
 
 class Noise:
-    def generate_noise(x, y, seed=None):
-        """Generates noise using the OpenSimplex algorithm."""
-        if seed is None:
-            seed = int(time.time() * 1000) % 1000
-        opensimplex.seed(seed)
-        return opensimplex.noise2(x, y)
+    # Requires opensimplex
 
-    def generate_noise_array(x, y, seed=None):
-        """Generates noise using the OpenSimplex algorithm."""
-        if seed is None:
-            seed = int(time.time() * 1000) % 1000
-        opensimplex.seed(seed)
-        return opensimplex.noise2array(x, y)
+    # def generate_noise(x, y, seed=None):
+    #     """Generates noise using the OpenSimplex algorithm."""
+    #     if seed is None:
+    #         seed = int(time.time() * 1000) % 1000
+    #     opensimplex.seed(seed)
+    #     return opensimplex.noise2(x, y)
+
+    # def generate_noise_array(x, y, seed=None):
+    #     """Generates noise using the OpenSimplex algorithm."""
+    #     if seed is None:
+    #         seed = int(time.time() * 1000) % 1000
+    #     opensimplex.seed(seed)
+    #     return opensimplex.noise2array(x, y)
+    None

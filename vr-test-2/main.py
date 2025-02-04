@@ -52,7 +52,6 @@ class Wvars:
 class VrApp(BaseVrApp):
     def __init__(self):
         super().__init__(
-            wantDevMode=False,
             lensResolution=(1000, 1000),
             FOV=95.5,
             autoCamPositioning=True,
