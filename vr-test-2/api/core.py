@@ -296,13 +296,6 @@ class BaseVrApp(ShowBase):
         self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
         self.cam_left.setPos(-0.25, 0, 0)
         self.cam_right.setPos(0.25, 0, 0)
-        self.vrCamPos = (0, 0, 0)
-        self.vrCamHpr = (0, 0, 0)
-        self.vrCamPosOffset = (0, 0, 0)
-        self.vrControllerPosOffset = (0, 0, -0.8)
-        self.vrCamHprOffset = (0, 0, 0)
-        self.vrControllerHprOffset = (0, 0, 0)
-        self.vrCam.setPos(self.vrCamPos)
 
     def reset_view_orientation(self):
         self.vrCamPosOffset = (

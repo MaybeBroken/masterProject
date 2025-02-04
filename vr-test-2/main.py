@@ -45,7 +45,7 @@ window-title Vr-Test-2
 
 
 class Wvars:
-    speed = 0.8
+    speed = 0.25
     swingSpeed = 10
 
 
@@ -93,33 +93,36 @@ class VrApp(BaseVrApp):
         self.skybox.setScale(10000)
         self.skybox.setBin("background", 0)
         self.setupControls()
-
+        # Add shaders
         for win, cam in [
             [self.win, self.cam],
             [self.buffer_left, self.cam_left],
             [self.buffer_right, self.cam_right],
         ]:
-            threshold = Vec4(0.88, 0.9, 0.85, 0.4)
-            manager = FilterManager(win, cam)
-            tex1 = Texture()
-            tex2 = Texture()
-            tex3 = Texture()
-            finalquad = manager.renderSceneInto(colortex=tex1)
-            interquad = manager.renderQuadInto(colortex=tex2)
-            interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
-            interquad.setShaderInput("tex1", tex1)
-            interquad.setShaderInput("threshold", threshold)
-            interquad2 = manager.renderQuadInto(colortex=tex3)
-            interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
-            interquad2.setShaderInput("tex2", tex2)
-            finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
-            finalquad.setShaderInput("tex1", tex1)
-            finalquad.setShaderInput("tex2", tex2)
-            finalquad.setShaderInput("tex3", tex3)
-            # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
-            # finalquad.setShaderInput("lf_settings", lf_settings)
-            # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
-
+            try:
+                threshold = Vec4(0.88, 0.9, 0.85, 0.4)
+                manager = FilterManager(win, cam)
+                tex1 = Texture()
+                tex2 = Texture()
+                tex3 = Texture()
+                finalquad = manager.renderSceneInto(colortex=tex1)
+                interquad = manager.renderQuadInto(colortex=tex2)
+                interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
+                interquad.setShaderInput("tex1", tex1)
+                interquad.setShaderInput("threshold", threshold)
+                interquad2 = manager.renderQuadInto(colortex=tex3)
+                interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
+                interquad2.setShaderInput("tex2", tex2)
+                finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
+                finalquad.setShaderInput("tex1", tex1)
+                finalquad.setShaderInput("tex2", tex2)
+                finalquad.setShaderInput("tex3", tex3)
+                # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
+                # finalquad.setShaderInput("lf_settings", lf_settings)
+                # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
+            except Exception as e:
+                print("Shader error: ", e)
+        self.player.setPos(0, -0.9, 3.9)
         self.taskMgr.add(self.update, "update")
 
     def update(self, task):
@@ -176,6 +179,7 @@ class VrApp(BaseVrApp):
         self.accept("shift", self.updateKeyMap, ["down", True])
         self.accept("shift-up", self.updateKeyMap, ["down", False])
         self.accept("r", self.reset_view_orientation)
+        self.accept("p", lambda: print(self.player.getPos()))
 
     def updateKeyMap(self, key, value):
         self.keyMap[key] = value
