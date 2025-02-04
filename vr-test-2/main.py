@@ -66,6 +66,9 @@ class VrApp(BaseVrApp):
         self.model.setPos(0, 0, -8.5)
         self.model.setHpr(-90, 0, 0)
 
+        self.cam_left_tex.setCompression(Texture.CMOff)  # Disable compression
+        self.cam_right_tex.setCompression(Texture.CMOff)  # Disable compression
+
         self.render.setShaderAuto()
         self.sceneAmbientLight = AmbientLight("sceneAmbientLight")
         self.sceneAmbientLight.setColor((0.5, 0.5, 0.5, 1))
@@ -81,6 +84,7 @@ class VrApp(BaseVrApp):
         )
         self.render.setLight(self.sceneDirectionalLightNodePath)
         self.vrCamPos = (0, 0, 0)
+
         self.vrCamHpr = (0, 0, 0)
         self.sphereModel = self.loader.load_model("models/misc/sphere")
         self.sphereModel.setScale(0.7)
@@ -88,12 +92,14 @@ class VrApp(BaseVrApp):
         self.sphereModel.setBin("fixed", 10)
         self.sphereModel.instanceTo(self.hand_left)
         self.sphereModel.instanceTo(self.hand_right)
-        self.skybox = self.loader.load_model("skybox/box.bam")
-        self.skybox.reparent_to(self.render)
-        self.skybox.setScale(10000)
-        self.skybox.setBin("background", 0)
+
+        self.loadSkybox()
         self.setupControls()
-        # Add shaders
+        self.setupShaders()
+        self.player.setPos(0, -0.9, 3.9)
+        self.taskMgr.add(self.update, "update")
+
+    def setupShaders(self):
         for win, cam in [
             [self.win, self.cam],
             [self.buffer_left, self.cam_left],
@@ -105,6 +111,9 @@ class VrApp(BaseVrApp):
                 tex1 = Texture()
                 tex2 = Texture()
                 tex3 = Texture()
+                tex1.setCompression(Texture.CMOff)  # Disable compression
+                tex2.setCompression(Texture.CMOff)  # Disable compression
+                tex3.setCompression(Texture.CMOff)  # Disable compression
                 finalquad = manager.renderSceneInto(colortex=tex1)
                 interquad = manager.renderQuadInto(colortex=tex2)
                 interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
@@ -122,8 +131,16 @@ class VrApp(BaseVrApp):
                 # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
             except Exception as e:
                 print("Shader error: ", e)
-        self.player.setPos(0, -0.9, 3.9)
-        self.taskMgr.add(self.update, "update")
+
+    def loadSkybox(self):
+        self.skybox = self.loader.load_model("skybox/box.bam")
+        self.skybox.reparent_to(self.render)
+        self.skybox.setScale(1000)
+        for tex in self.skybox.findAllTextures():
+            tex.setMinfilter(Texture.FTLinearMipmapLinear)
+            tex.setMagfilter(Texture.FTLinear)
+            tex.setCompression(Texture.CMOff)  # Disable compression to avoid JPEG artifacts
+        self.skybox.setBin("background", 0)
 
     def update(self, task):
         result = task.cont
@@ -152,6 +169,7 @@ class VrApp(BaseVrApp):
             self.player.getY() + y_movement,
             self.player.getZ() + z_movement,
         )
+        self.skybox.setPos(self.player.getPos())
 
         return result
 
