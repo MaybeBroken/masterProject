@@ -2,6 +2,8 @@
 
 import os
 import csv
+import bpy
+import math
 
 with open("/Users/david.sponseller/Code/masterProject/ExcelToBlend/file.csv") as file:
     data = file.readlines()
@@ -69,9 +71,6 @@ print(f"Found {PLANETNUM} planets\n")
 
 
 # Create meshes in blender
-
-import bpy
-import math
 
 
 def add_mesh(name, verts, faces, edges=None, col_name="Collection"):
