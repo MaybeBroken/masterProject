@@ -30,7 +30,7 @@ from direct.showbase.ShowBase import ShowBase
 from time import sleep
 import ctypes
 from math import asin, degrees, radians, sqrt, sin, cos
-from pyquaternion import Quaternion
+
 from ctypes import pointer, Structure, c_float, POINTER, cast, byref
 import enum
 
