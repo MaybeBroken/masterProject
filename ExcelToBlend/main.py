@@ -5,9 +5,9 @@ import csv
 import bpy  # type: ignore
 import math
 from random import randint
-from bpy_extras.io_utils import ImportHelper # type: ignore
-from bpy.types import Operator # type: ignore
-from bpy.props import StringProperty # type: ignore
+from bpy_extras.io_utils import ImportHelper  # type: ignore
+from bpy.types import Operator  # type: ignore
+from bpy.props import StringProperty  # type: ignore
 
 bl_info = {
     "name": "CSV Planet Importer",
@@ -15,20 +15,21 @@ bl_info = {
     "category": "Import-Export",
     "version": (0, 0, 2),
     "author": "MaybeBroken",
-    "description": "Import an excel-generated solar system CSV file to generate Blender models.",
+    "description": "Import a solar system CSV file to generate planet meshes.",
 }
+
 
 class ImportCSV(Operator, ImportHelper):
     bl_idname = "import_csv.some_data"
     bl_label = "Import CSV"
     filename_ext = ".csv"
-    filter_glob = StringProperty(
+    filter_glob: StringProperty(
         default="*.csv",
         options={"HIDDEN"},
         maxlen=255,
-    )
+    ) # type: ignore
 
-    def execute(self, context):
+    def execute(self, context=None):
         FILEPATH = self.filepath
         with open(FILEPATH) as file:
             data = file.readlines()
@@ -144,7 +145,7 @@ class ImportCSV(Operator, ImportHelper):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportCSV.bl_idname, text="Import Planet CSV")
+    self.layout.operator(ImportCSV.bl_idname, text="Import CSV")
 
 
 def register():
@@ -213,3 +214,9 @@ def create_uv_sphere(radius, segments, rings):
                 ]
             )
     return verts, faces
+
+
+if __name__ == "__main__":
+    unregister()
+    ImportCSV.filepath = os.path.join(os.path.dirname(__file__.replace("\\test.blend", "")), "file.csv")
+    ImportCSV.execute(ImportCSV)
