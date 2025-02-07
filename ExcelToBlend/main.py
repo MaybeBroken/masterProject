@@ -5,17 +5,26 @@ import csv
 import bpy  # type: ignore
 import math
 from random import randint
-from bpy_extras.io_utils import ImportHelper
-from bpy.types import Operator
-from bpy.props import StringProperty
+from bpy_extras.io_utils import ImportHelper # type: ignore
+from bpy.types import Operator # type: ignore
+from bpy.props import StringProperty # type: ignore
+
+bl_info = {
+    "name": "CSV Planet Importer",
+    "blender": (4, 0, 0),
+    "category": "Import-Export",
+    "version": (0, 0, 2),
+    "author": "MaybeBroken",
+    "description": "Import an excel-generated solar system CSV file to generate Blender models.",
+}
 
 class ImportCSV(Operator, ImportHelper):
     bl_idname = "import_csv.some_data"
     bl_label = "Import CSV"
     filename_ext = ".csv"
-    filter_glob: StringProperty(
+    filter_glob = StringProperty(
         default="*.csv",
-        options={'HIDDEN'},
+        options={"HIDDEN"},
         maxlen=255,
     )
 
@@ -28,7 +37,8 @@ class ImportCSV(Operator, ImportHelper):
             file.writelines(
                 line
                 for line in data
-                if line != ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,\n"
+                if line
+                != ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,\n"
             )
 
         file = csv.reader(open(FILEPATH))
@@ -98,13 +108,21 @@ class ImportCSV(Operator, ImportHelper):
                     rings = 150
                     verts, faces = create_uv_sphere(_radius, segments, rings)
                     if str(planetId) in bpy.data.objects:
-                        bpy.data.objects.remove(bpy.data.objects[str(planetId)], do_unlink=True)
+                        bpy.data.objects.remove(
+                            bpy.data.objects[str(planetId)], do_unlink=True
+                        )
                     add_mesh(str(planetId), verts, faces)
                     PLANETIDS.append(planetId)
 
         planetIndex = 0
         for au in DATA["Semimajor axis (AU)"]:
-            if au != " " and au != "0" and au != "0.0" and au != "axis (AU)" and au != "":
+            if (
+                au != " "
+                and au != "0"
+                and au != "0.0"
+                and au != "axis (AU)"
+                and au != ""
+            ):
                 au = float(au) * 10
                 planetId = PLANETIDS[planetIndex]
                 if str(planetId) in bpy.data.objects:
@@ -122,22 +140,27 @@ class ImportCSV(Operator, ImportHelper):
                 )
                 planetIndex += 1
 
-        return {'FINISHED'}
+        return {"FINISHED"}
+
 
 def menu_func_import(self, context):
     self.layout.operator(ImportCSV.bl_idname, text="Import Planet CSV")
+
 
 def register():
     bpy.utils.register_class(ImportCSV)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
+
 def unregister():
     bpy.utils.unregister_class(ImportCSV)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
+
 if __name__ == "__main__":
     register()
     # bpy.ops.import_csv.some_data('INVOKE_DEFAULT')  # Removed to run from import menu
+
 
 def add_mesh(name, verts, faces, edges=None, col_name="Collection"):
     if edges is None:
