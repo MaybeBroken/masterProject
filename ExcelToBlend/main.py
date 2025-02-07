@@ -2,7 +2,7 @@
 
 import os
 import csv
-import bpy
+import bpy  # type: ignore
 import math
 
 with open("/Users/david.sponseller/Code/masterProject/ExcelToBlend/file.csv") as file:
