@@ -8,6 +8,11 @@ from random import randint
 from bpy_extras.io_utils import ImportHelper  # type: ignore
 from bpy.types import Operator  # type: ignore
 from bpy.props import StringProperty  # type: ignore
+import logging
+
+# Set up logging to Blender console
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 bl_info = {
     "name": "CSV Planet Importer",
@@ -27,7 +32,7 @@ class ImportCSV(Operator, ImportHelper):
         default="*.csv",
         options={"HIDDEN"},
         maxlen=255,
-    ) # type: ignore
+    )  # type: ignore
 
     def execute(self, context=None):
         FILEPATH = self.filepath
@@ -63,7 +68,7 @@ class ImportCSV(Operator, ImportHelper):
                 INDEX = fileData[1].index(id)
                 INDEXES.append(INDEX)
                 DATA[id] = []
-                print(f"Found {id} at {INDEX}")
+                logger.info(f"Found {id} at {INDEX}")
 
         del fileData[0]
         INDEXDATA = fileData[0]
@@ -89,7 +94,9 @@ class ImportCSV(Operator, ImportHelper):
                         None
 
         print()
-        print(f"Found {PLANETNUM} planets\n")
+        print(f"Sun radius is {fileData[7][3]}")
+        print()
+        logger.info(f"Found {PLANETNUM} planets\n")
 
         # Create meshes in blender
 
@@ -107,7 +114,7 @@ class ImportCSV(Operator, ImportHelper):
                     _radius = float(radius)
                     segments = 150
                     rings = 150
-                    verts, faces = create_uv_sphere(_radius, segments, rings)
+                    verts, faces = create_uv_sphere(_radius / 3.3, segments, rings)
                     if str(planetId) in bpy.data.objects:
                         bpy.data.objects.remove(
                             bpy.data.objects[str(planetId)], do_unlink=True
@@ -124,14 +131,13 @@ class ImportCSV(Operator, ImportHelper):
                 and au != "axis (AU)"
                 and au != ""
             ):
-                au = float(au) * 10
+                circle_radius = float(au) * 40
                 planetId = PLANETIDS[planetIndex]
                 if str(planetId) in bpy.data.objects:
                     obj = bpy.data.objects[str(planetId)]
                 else:
                     continue
                 randomRotation = randint(0, 360)
-                circle_radius = float(au)
                 verts, edges = create_circle(circle_radius, 100)
                 add_mesh(f"orbit-{planetId}", verts, [], edges)
                 obj.location = (
@@ -139,7 +145,53 @@ class ImportCSV(Operator, ImportHelper):
                     circle_radius * math.sin(math.radians(randomRotation)),
                     0,
                 )
+                create_material(
+                    f"planet-{planetId}",
+                    (0.5, 0.5, 0.5, 1),
+                )
+                apply_material(obj, bpy.data.materials[f"planet-{planetId}"])
+                atmosphere = duplicate_object(
+                    obj,
+                    f"atmosphere-{planetId}",
+                    (0, 0, 0),
+                    (1.1, 1.1, 1.1),
+                )
+                apply_material(
+                    atmosphere,
+                    create_volume_material(
+                        f"atmosphere-{planetId}",
+                        (0.38, 0.5, 1, 1),
+                        35,
+                    ),
+                )
                 planetIndex += 1
+
+        verts, faces = create_uv_sphere(float(fileData[7][3]), 150, 150)
+        edges = []
+        sunId = randint(0, 100000000)
+        add_mesh(f"sun-{sunId}", verts, faces, edges)
+        create_emission_material(
+            f"sun-{sunId}",
+            (1, 1, 0.5, 1),
+            10000,
+        )
+        apply_material(
+            bpy.data.objects[f"sun-{sunId}"], bpy.data.materials[f"sun-{sunId}"]
+        )
+        flare = duplicate_object(
+            bpy.data.objects[f"sun-{sunId}"],
+            f"flare-{sunId}",
+            (0, 0, 0),
+            (1.05, 1.05, 1.05),
+        )
+        apply_material(
+            flare,
+            create_volume_material(
+                f"flare-{sunId}",
+                (1, 0.7, 0.1, 1),
+                1.3,
+            ),
+        )
 
         return {"FINISHED"}
 
@@ -160,7 +212,6 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-    # bpy.ops.import_csv.some_data('INVOKE_DEFAULT')  # Removed to run from import menu
 
 
 def add_mesh(name, verts, faces, edges=None, col_name="Collection"):
@@ -216,7 +267,68 @@ def create_uv_sphere(radius, segments, rings):
     return verts, faces
 
 
+def create_material(name, color):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    return mat
+
+
+def create_emission_material(name, color, strength):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    mat.node_tree.nodes.clear()
+    output_node = mat.node_tree.nodes.new("ShaderNodeOutputMaterial")
+    emission_node = mat.node_tree.nodes.new("ShaderNodeEmission")
+    emission_node.inputs["Strength"].default_value = strength
+    emission_node.inputs["Color"].default_value = color
+    mat.node_tree.links.new(
+        emission_node.outputs["Emission"], output_node.inputs["Surface"]
+    )
+    return mat
+
+
+def create_volume_material(name, color, density):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    mat.node_tree.nodes.clear()
+    output_node = mat.node_tree.nodes.new("ShaderNodeOutputMaterial")
+    volume_node = mat.node_tree.nodes.new("ShaderNodeVolumePrincipled")
+    volume_node.inputs["Density"].default_value = density
+    volume_node.inputs["Color"].default_value = color
+    mat.node_tree.links.new(volume_node.outputs["Volume"], output_node.inputs["Volume"])
+    return mat
+
+
+def duplicate_object(obj, name, location, scale):
+    new_obj = obj.copy()
+    new_obj.data = obj.data.copy()
+    new_obj.location = (
+        obj.location[0] + location[0],
+        obj.location[1] + location[1],
+        obj.location[2] + location[2],
+    )
+    new_obj.scale = (
+        obj.scale[0] * scale[0],
+        obj.scale[1] * scale[1],
+        obj.scale[2] * scale[2],
+    )
+    new_obj.name = name
+    bpy.context.collection.objects.link(new_obj)
+    return new_obj
+
+
+def apply_material(obj, material):
+    if obj.data.materials:
+        obj.data.materials[0] = material
+    else:
+        obj.data.materials.append(material)
+
+
 if __name__ == "__main__":
     unregister()
-    ImportCSV.filepath = os.path.join(os.path.dirname(__file__.replace("\\test.blend", "")), "file.csv")
+    ImportCSV.filepath = os.path.join(
+        os.path.dirname(__file__.replace("\\test1.blend", "")), "file.csv"
+    )
     ImportCSV.execute(ImportCSV)
