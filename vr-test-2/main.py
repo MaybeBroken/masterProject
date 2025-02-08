@@ -7,6 +7,7 @@ from panda3d.core import (
     Texture,
     Shader,
     Vec4,
+    Material,
 )
 from direct.filter.FilterManager import FilterManager
 from math import sin, cos, pi
@@ -59,11 +60,11 @@ class VrApp(BaseVrApp):
             autoControllerPositioning=True,
             autoControllerRotation=True,
         )
-        self.model = self.loader.load_model("models/control1.bam")
-        self.model.reparent_to(self.render)
-        self.model.setScale(13)
-        self.model.setPos(0, 0, -8.5)
-        self.model.setHpr(-90, 0, 0)
+        self.ship = self.loader.load_model("models/control1.bam")
+        self.ship.reparent_to(self.render)
+        self.ship.setScale(13)
+        self.ship.setPos(0, 0, -8.5)
+        self.ship.setHpr(-90, 0, 0)
 
         self.cam_left_tex.setCompression(Texture.CMOff)  # Disable compression
         self.cam_right_tex.setCompression(Texture.CMOff)  # Disable compression
@@ -92,7 +93,28 @@ class VrApp(BaseVrApp):
         self.sphereModel.instanceTo(self.hand_left)
         self.sphereModel.instanceTo(self.hand_right)
 
+        self.solarSystem = self.loader.load_model("models/test1.bam")
+        self.solarSystemNode = self.solarSystem.instanceTo(self.render)
+        self.solarSystemNode.setPos(0, 0, 0)
+        self.solarSystem.setScale(0.001)
+        for geom in self.solarSystem.findAllMatches("**/+GeomNode"):
+            if geom.getName().startswith("orbit"):
+                geom.removeNode()
+            elif geom.getName().startswith("atmosphere") or geom.getName().endswith(
+                ".001"
+            ):
+                geom.removeNode()
+            elif geom.getName().startswith("flare"):
+                geom.removeNode()
+            elif geom.getName().startswith("sun"):
+                geom.setScale(150)
+            elif geom.getName().startswith("planet"):
+                geom.setScale(150)
+
+        self.controlBoard = self.ship.find("**/Display")
+
         self.loadSkybox()
+        self.skybox.hide()
         self.setupControls()
         self.setupShaders()
         self.player.setPos(0, -0.9, 3.9)
@@ -138,12 +160,18 @@ class VrApp(BaseVrApp):
         for tex in self.skybox.findAllTextures():
             tex.setMinfilter(Texture.FTLinearMipmapLinear)
             tex.setMagfilter(Texture.FTLinear)
-            tex.setCompression(Texture.CMOff)  # Disable compression to avoid JPEG artifacts
+            tex.setCompression(
+                Texture.CMOff
+            )  # Disable compression to avoid JPEG artifacts
         self.skybox.setBin("background", 0)
 
     def update(self, task):
         result = task.cont
         playerMoveSpeed = Wvars.speed / 10
+        try:
+            self.controlBoard.setTexture(self.cam_left_tex)
+        except:
+            self.controlBoard.setTextureOff()
 
         x_movement = 0
         y_movement = 0

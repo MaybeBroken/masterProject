@@ -109,7 +109,7 @@ class ImportCSV(Operator, ImportHelper):
                 and radius != "0.0"
                 and radius != "(Earth radii)"
             ):
-                planetId = randint(0, 100000000)
+                planetId = f"planet-{randint(0, 100000000)}"
                 if float(radius) > 0:
                     _radius = float(radius)
                     segments = 150
@@ -146,10 +146,10 @@ class ImportCSV(Operator, ImportHelper):
                     0,
                 )
                 create_material(
-                    f"planet-{planetId}",
+                    f"planetMat-{planetId}",
                     (0.5, 0.5, 0.5, 1),
                 )
-                apply_material(obj, bpy.data.materials[f"planet-{planetId}"])
+                apply_material(obj, bpy.data.materials[f"planetMat-{planetId}"])
                 atmosphere = duplicate_object(
                     obj,
                     f"atmosphere-{planetId}",
@@ -173,7 +173,7 @@ class ImportCSV(Operator, ImportHelper):
         create_emission_material(
             f"sun-{sunId}",
             (1, 1, 0.5, 1),
-            10000,
+            100000,
         )
         apply_material(
             bpy.data.objects[f"sun-{sunId}"], bpy.data.materials[f"sun-{sunId}"]

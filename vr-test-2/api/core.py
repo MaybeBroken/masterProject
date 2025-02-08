@@ -133,6 +133,15 @@ class BaseVrApp(ShowBase):
                 self.camLens.setAspectRatio(
                     self.lensResolution[0] / self.lensResolution[1]
                 )
+                if main.input.hand_active[Side.LEFT]:
+                    self.hand_left.show()
+                else:
+                    self.hand_left.hide()
+                if main.input.hand_active[Side.RIGHT]:
+                    self.hand_right.show()
+                else:
+                    self.hand_right.hide()
+
                 if autoCamPositioning:
                     self.vrCam.setPos(
                         ((self.vrCameraPose.position.x + self.vrCamPosOffset[0]) * 8)
@@ -383,7 +392,6 @@ class InputState(Structure):
         ("pose_action", xr.Action),
         ("vibrate_action", xr.Action),
         ("quit_action", xr.Action),
-        ("joystick_action", xr.Action * len(Side)),  # Add joystick actions
         ("hand_subaction_path", xr.Path * len(Side)),
         ("hand_space", xr.Space * len(Side)),
         ("hand_scale", c_float * len(Side)),
@@ -394,7 +402,6 @@ class InputState(Structure):
     pose_action = None
     vibrate_action = None
     quit_action = None
-    joystick_action = None
     hand_subaction_path = None
     hand_space = None
     hand_scale = None
@@ -737,27 +744,7 @@ class main:
                 subaction_paths=None,
             ),
         )
-        # Create input actions for joystick inputs.
-        self.input.joystick_action[Side.LEFT] = xr.create_action(
-            action_set=self.input.action_set,
-            create_info=xr.ActionCreateInfo(
-                action_type=xr.ActionType.VECTOR2F_INPUT,
-                action_name="joystick_left",
-                localized_action_name="Joystick Left",
-                count_subaction_paths=1,
-                subaction_paths=pointer(self.input.hand_subaction_path[Side.LEFT]),
-            ),
-        )
-        self.input.joystick_action[Side.RIGHT] = xr.create_action(
-            action_set=self.input.action_set,
-            create_info=xr.ActionCreateInfo(
-                action_type=xr.ActionType.VECTOR2F_INPUT,
-                action_name="joystick_right",
-                localized_action_name="Joystick Right",
-                count_subaction_paths=1,
-                subaction_paths=pointer(self.input.hand_subaction_path[Side.RIGHT]),
-            ),
-        )
+
         select_path = [
             xr.string_to_path(self.instance, "/user/hand/left/input/select/click"),
             xr.string_to_path(self.instance, "/user/hand/right/input/select/click"),
@@ -778,10 +765,6 @@ class main:
             xr.string_to_path(self.instance, "/user/hand/left/input/trigger/value"),
             xr.string_to_path(self.instance, "/user/hand/right/input/trigger/value"),
         ]
-        joystick_path = [
-            xr.string_to_path(self.instance, "/user/hand/left/input/thumbstick"),
-            xr.string_to_path(self.instance, "/user/hand/right/input/thumbstick"),
-        ]
         # Suggest bindings for KHR Simple.
         khr_bindings = [
             # Fall back to a click input for the grab action.
@@ -800,12 +783,6 @@ class main:
             ),
             xr.ActionSuggestedBinding(
                 self.input.vibrate_action, haptic_path[Side.RIGHT]
-            ),
-            xr.ActionSuggestedBinding(
-                self.input.joystick_action[Side.LEFT], joystick_path[Side.LEFT]
-            ),
-            xr.ActionSuggestedBinding(
-                self.input.joystick_action[Side.RIGHT], joystick_path[Side.RIGHT]
             ),
         ]
         xr.suggest_interaction_profile_bindings(
@@ -909,17 +886,6 @@ class main:
                 ),
             )
             self.input.hand_active[hand] = pose_state.is_active
-
-            # Get joystick action state
-            joystick_value = xr.get_action_state_vector2f(
-                self.session,
-                xr.ActionStateGetInfo(
-                    action=self.input.joystick_action[hand],
-                    subaction_path=self.input.hand_subaction_path[hand],
-                ),
-            )
-            if joystick_value.is_active:
-                print(f"Joystick {hand.name}: {joystick_value.current_state}")
 
     def create_shader_program(self, vertex_source, fragment_source):
         vertex_shader = self.compile_shader(vertex_source, GL.GL_VERTEX_SHADER)
