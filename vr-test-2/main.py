@@ -139,12 +139,16 @@ class VrApp(BaseVrApp):
         self.texCard = self.render.attachNewNode(CardMaker("texCard").generate())
         self.texCard.setTexture(self.planetBufferText)
         self.texCard.setPos(self.controlBoard.getPos(self.render))
+        self.texCard.setY(self.texCard.getY() - self.texCard.getScale()[0] / 2)
+        self.texCard.setH(self.texCard.getH() + 90)
+        self.texCard.setP(self.texCard.getP())
+        self.texCard.setR(self.texCard.getR() - 90)
+
         self.texCard.setScale(4)
         self.texCard.setTransparency(TransparencyAttrib.MAlpha)
-        self.texCard.setColor(0, 0, 0, 1)
 
-        self.transparencyShader = Shader.load("shaders/transparency.sha")
-        self.texCard.setShader(self.transparencyShader)
+        # self.transparencyShader = Shader.load("shaders/transparency.sha")
+        # self.texCard.setShader(self.transparencyShader)
 
         self.loadSkybox()
         self.setupControls()
