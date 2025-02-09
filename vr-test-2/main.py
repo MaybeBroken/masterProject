@@ -71,6 +71,10 @@ class VrApp(BaseVrApp):
 
         self.cam_left_tex.setCompression(Texture.CMOff)  # Disable compression
         self.cam_right_tex.setCompression(Texture.CMOff)  # Disable compression
+        self.buffer_left.setClearColorActive(True)
+        self.buffer_left.setClearColor((0, 0, 0, 0))
+        self.buffer_right.setClearColorActive(True)
+        self.buffer_right.setClearColor((0, 0, 0, 0))
 
         self.render.setShaderAuto()
         self.sceneAmbientLight = AmbientLight("sceneAmbientLight")
@@ -95,21 +99,20 @@ class VrApp(BaseVrApp):
         self.sphereModel.setBin("fixed", 10)
         self.sphereModel.instanceTo(self.hand_left)
         self.sphereModel.instanceTo(self.hand_right)
-
         self.controlBoard = self.ship.find("**/Display")
         self.controlBoard.setColor(0, 0, 0, 1)
         self.controlBoard.setTransparency(TransparencyAttrib.MAlpha)
-
         self.planetRenderScene = NodePath("planetRenderScene")
 
-        self.planetBuffer = self.make_buffer((400, 650))
+        self.planetBuffer = self.make_buffer((600, 600))
+        self.planetBuffer.setClearColorActive(True)
+        self.planetBuffer.setClearColor((0, 0, 0, 0))
         self.planetCam = self.makeCamera(
             self.planetBuffer, scene=self.planetRenderScene, lens=self.camLens
         )
-
         self.planetBufferText = Texture()
+        self.planetBufferText.setFormat(Texture.F_rgba)
         self.planetBufferText.setKeepRamImage(True)
-
         self.planetBuffer.addRenderTexture(
             self.planetBufferText, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
@@ -137,9 +140,13 @@ class VrApp(BaseVrApp):
         self.texCard.setTexture(self.planetBufferText)
         self.texCard.setPos(self.controlBoard.getPos(self.render))
         self.texCard.setScale(4)
+        self.texCard.setTransparency(TransparencyAttrib.MAlpha)
+        self.texCard.setColor(0, 0, 0, 1)
+
+        self.transparencyShader = Shader.load("shaders/transparency.sha")
+        self.texCard.setShader(self.transparencyShader)
 
         self.loadSkybox()
-        self.skybox.hide()
         self.setupControls()
         self.setupShaders()
         self.player.setPos(0, -0.9, 3.9)
@@ -222,8 +229,8 @@ class VrApp(BaseVrApp):
         )
         self.skybox.setPos(self.player.getPos())
         if self.planetCam:
-            self.planetCam.setPos(0, 0, 0)
-            self.planetCam.setHpr(0, 0, 0)
+            self.planetCam.setPos(self.planetRenderScene, 0, 0, 0)
+            self.planetCam.setHpr(self.planetRenderScene, 0, 0, 0)
 
         return result
 
