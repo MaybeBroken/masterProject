@@ -120,121 +120,10 @@ class BaseVrApp(ShowBase):
         self.hand_right = self.handRootNode.attachNewNode("hand_right")
         self.vrControllerPose = None
 
-        def getHeadsetTask(task):
-            try:
-                while main.pose_quat is None:
-                    GraphicsEngine.get_global_ptr().render_frame()
-                    sleep(0.01)
-                self.vrCameraPose = main.pose_quat
-                self.vrControllerPose = main.controller
-                self.camera.setPos(self.vrCam.getPos())
-                self.camera.setHpr(self.vrCam.getHpr())
-                self.camLens.setFov(self.vrLens.getFov())
-                self.camLens.setAspectRatio(
-                    self.lensResolution[0] / self.lensResolution[1]
-                )
-                if main.input.hand_active[Side.LEFT]:
-                    self.hand_left.show()
-                else:
-                    self.hand_left.hide()
-                if main.input.hand_active[Side.RIGHT]:
-                    self.hand_right.show()
-                else:
-                    self.hand_right.hide()
-
-                if autoCamPositioning:
-                    self.vrCam.setPos(
-                        ((self.vrCameraPose.position.x + self.vrCamPosOffset[0]) * 8)
-                        + self.vrCamPos[0],
-                        ((self.vrCameraPose.position.z + self.vrCamPosOffset[1]) * -8)
-                        + self.vrCamPos[1],
-                        ((self.vrCameraPose.position.y + self.vrCamPosOffset[2]) * 8)
-                        + self.vrCamPos[2],
-                    )
-                if autoCamRotation:
-                    self.vrCam.setQuat(
-                        LQuaternionf(
-                            -self.vrCameraPose.orientation.w,
-                            -self.vrCameraPose.orientation.x,
-                            -self.vrCameraPose.orientation.z,
-                            -self.vrCameraPose.orientation.y,
-                        )
-                    )
-                    vrCamH = self.vrCam.getH()
-                    vrCamP = self.vrCam.getP()
-                    vrCamR = self.vrCam.getR()
-                    self.vrCam.setR(-vrCamR * cos(radians(vrCamH)))
-                    self.vrCam.setR(self.vrCam, vrCamP * cos(radians(vrCamH + 90)))
-                    self.vrCam.setP(vrCamP * cos(radians(vrCamH)))
-                    self.vrCam.setP(self.vrCam, vrCamR * cos(radians(vrCamH + 90)))
-                if autoControllerPositioning:
-                    try:
-                        self.hand_left.setPos(
-                            (
-                                (self.vrControllerPose["left"].position.x)
-                                + self.vrControllerPosOffset[0]
-                            )
-                            * 8,
-                            (
-                                (self.vrControllerPose["left"].position.z)
-                                + self.vrControllerPosOffset[1]
-                            )
-                            * -8,
-                            (
-                                (self.vrControllerPose["left"].position.y)
-                                + self.vrControllerPosOffset[2]
-                            )
-                            * 8,
-                        )
-                        self.hand_right.setPos(
-                            (
-                                (self.vrControllerPose["right"].position.x)
-                                + self.vrControllerPosOffset[0]
-                            )
-                            * 8,
-                            (
-                                (self.vrControllerPose["right"].position.z)
-                                + self.vrControllerPosOffset[1]
-                            )
-                            * -8,
-                            (
-                                (self.vrControllerPose["right"].position.y)
-                                + self.vrControllerPosOffset[2]
-                            )
-                            * 8,
-                        )
-                    except:
-                        pass
-                if autoControllerRotation:
-                    try:
-                        self.hand_left.setQuat(
-                            LQuaternionf(
-                                -self.vrControllerPose["left"].orientation.w,
-                                -self.vrControllerPose["left"].orientation.x,
-                                -self.vrControllerPose["left"].orientation.z,
-                                -self.vrControllerPose["left"].orientation.y,
-                            )
-                        )
-                        self.hand_left.setR(-self.hand_left.getR())
-                        self.hand_right.setQuat(
-                            LQuaternionf(
-                                -self.vrControllerPose["right"].orientation.w,
-                                -self.vrControllerPose["right"].orientation.x,
-                                -self.vrControllerPose["right"].orientation.z,
-                                -self.vrControllerPose["right"].orientation.y,
-                            )
-                        )
-                        self.hand_right.setR(-self.hand_right.getR())
-                    except:
-                        pass
-            except Exception as e:
-                print(str(e))
-                print("\n")
-                sleep(0.1)
-
-            return task.cont
-
-        self.taskMgr.add(getHeadsetTask, "getHeadsetTask")
+        self.autoCamPositioning = autoCamPositioning
+        self.autoCamRotation = autoCamRotation
+        self.autoControllerPositioning = autoControllerPositioning
+        self.autoControllerRotation = autoControllerRotation
 
         if wantDevMode:
             self.doMethodLater(
@@ -302,6 +191,108 @@ class BaseVrApp(ShowBase):
         self.cam_left.setPos(-0.25, 0, 0)
         self.cam_right.setPos(0.25, 0, 0)
 
+    def UpdateHeadsetTracking(self):
+        try:
+            while main.pose_quat is None:
+                GraphicsEngine.get_global_ptr().render_frame()
+                sleep(0.01)
+            self.vrCameraPose = main.pose_quat
+            self.vrControllerPose = main.controller
+            self.camera.setPos(self.vrCam.getPos())
+            self.camera.setHpr(self.vrCam.getHpr())
+            self.camLens.setFov(self.vrLens.getFov())
+            self.camLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
+
+            if self.autoCamPositioning:
+                self.vrCam.setPos(
+                    ((self.vrCameraPose.position.x + self.vrCamPosOffset[0]) * 8)
+                    + self.vrCamPos[0],
+                    ((self.vrCameraPose.position.z + self.vrCamPosOffset[1]) * -8)
+                    + self.vrCamPos[1],
+                    ((self.vrCameraPose.position.y + self.vrCamPosOffset[2]) * 8)
+                    + self.vrCamPos[2],
+                )
+            if self.autoCamRotation:
+                self.vrCam.setQuat(
+                    LQuaternionf(
+                        -self.vrCameraPose.orientation.w,
+                        -self.vrCameraPose.orientation.x,
+                        -self.vrCameraPose.orientation.z,
+                        -self.vrCameraPose.orientation.y,
+                    )
+                )
+                vrCamH = self.vrCam.getH()
+                vrCamP = self.vrCam.getP()
+                vrCamR = self.vrCam.getR()
+                self.vrCam.setR(-vrCamR * cos(radians(vrCamH)))
+                self.vrCam.setR(self.vrCam, vrCamP * cos(radians(vrCamH + 90)))
+                self.vrCam.setP(vrCamP * cos(radians(vrCamH)))
+                self.vrCam.setP(self.vrCam, vrCamR * cos(radians(vrCamH + 90)))
+            if self.autoControllerPositioning:
+                try:
+                    self.hand_left.setPos(
+                        (
+                            (self.vrControllerPose["left"].position.x)
+                            + self.vrControllerPosOffset[0]
+                        )
+                        * 8,
+                        (
+                            (self.vrControllerPose["left"].position.z)
+                            + self.vrControllerPosOffset[1]
+                        )
+                        * -8,
+                        (
+                            (self.vrControllerPose["left"].position.y)
+                            + self.vrControllerPosOffset[2]
+                        )
+                        * 8,
+                    )
+                    self.hand_right.setPos(
+                        (
+                            (self.vrControllerPose["right"].position.x)
+                            + self.vrControllerPosOffset[0]
+                        )
+                        * 8,
+                        (
+                            (self.vrControllerPose["right"].position.z)
+                            + self.vrControllerPosOffset[1]
+                        )
+                        * -8,
+                        (
+                            (self.vrControllerPose["right"].position.y)
+                            + self.vrControllerPosOffset[2]
+                        )
+                        * 8,
+                    )
+                except:
+                    pass
+            if self.autoControllerRotation:
+                try:
+                    self.hand_left.setQuat(
+                        LQuaternionf(
+                            -self.vrControllerPose["left"].orientation.w,
+                            -self.vrControllerPose["left"].orientation.x,
+                            -self.vrControllerPose["left"].orientation.z,
+                            -self.vrControllerPose["left"].orientation.y,
+                        )
+                    )
+                    self.hand_left.setR(-self.hand_left.getR())
+                    self.hand_right.setQuat(
+                        LQuaternionf(
+                            -self.vrControllerPose["right"].orientation.w,
+                            -self.vrControllerPose["right"].orientation.x,
+                            -self.vrControllerPose["right"].orientation.z,
+                            -self.vrControllerPose["right"].orientation.y,
+                        )
+                    )
+                    self.hand_right.setR(-self.hand_right.getR())
+                except:
+                    pass
+        except Exception as e:
+            print(str(e))
+            print("\n")
+            sleep(0.1)
+
     def resetView(self):
         self.vrLens.setFov(self.FOV)
         self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
@@ -321,10 +312,12 @@ class BaseVrApp(ShowBase):
         )
         self.resetView()
 
-    def make_buffer(self):
+    def make_buffer(self, lensResolution=None):
+        if lensResolution is None:
+            lensResolution = self.lensResolution
         winprops = WindowProperties.size(
-            self.lensResolution[0],
-            self.lensResolution[1],
+            lensResolution[0],
+            lensResolution[1],
         )
         fbprops = FrameBufferProperties()
         fbprops.setRgbColor(True)

@@ -7,7 +7,10 @@ from panda3d.core import (
     Texture,
     Shader,
     Vec4,
-    Material,
+    TransparencyAttrib,
+    CardMaker,
+    NodePath,
+    GraphicsOutput,
 )
 from direct.filter.FilterManager import FilterManager
 from math import sin, cos, pi
@@ -93,13 +96,32 @@ class VrApp(BaseVrApp):
         self.sphereModel.instanceTo(self.hand_left)
         self.sphereModel.instanceTo(self.hand_right)
 
+        self.controlBoard = self.ship.find("**/Display")
+        self.controlBoard.setColor(0, 0, 0, 1)
+        self.controlBoard.setTransparency(TransparencyAttrib.MAlpha)
+
+        self.planetRenderScene = NodePath("planetRenderScene")
+
+        self.planetBuffer = self.make_buffer((400, 650))
+        self.planetCam = self.makeCamera(
+            self.planetBuffer, scene=self.planetRenderScene, lens=self.camLens
+        )
+
+        self.planetBufferText = Texture()
+        self.planetBufferText.setKeepRamImage(True)
+
+        self.planetBuffer.addRenderTexture(
+            self.planetBufferText, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
+        )
+
         self.solarSystem = self.loader.load_model("models/test1.bam")
-        self.solarSystemNode = self.solarSystem.instanceTo(self.render)
+        self.solarSystemNode = self.solarSystem.instanceTo(self.planetRenderScene)
         self.solarSystemNode.setPos(0, 0, 0)
         self.solarSystem.setScale(0.001)
         for geom in self.solarSystem.findAllMatches("**/+GeomNode"):
             if geom.getName().startswith("orbit"):
-                geom.removeNode()
+                # geom.removeNode()
+                None
             elif geom.getName().startswith("atmosphere") or geom.getName().endswith(
                 ".001"
             ):
@@ -107,11 +129,14 @@ class VrApp(BaseVrApp):
             elif geom.getName().startswith("flare"):
                 geom.removeNode()
             elif geom.getName().startswith("sun"):
-                geom.setScale(150)
+                geom.setScale(10)
             elif geom.getName().startswith("planet"):
-                geom.setScale(150)
+                geom.setScale(250)
 
-        self.controlBoard = self.ship.find("**/Display")
+        self.texCard = self.render.attachNewNode(CardMaker("texCard").generate())
+        self.texCard.setTexture(self.planetBufferText)
+        self.texCard.setPos(self.controlBoard.getPos(self.render))
+        self.texCard.setScale(4)
 
         self.loadSkybox()
         self.skybox.hide()
@@ -160,12 +185,11 @@ class VrApp(BaseVrApp):
         for tex in self.skybox.findAllTextures():
             tex.setMinfilter(Texture.FTLinearMipmapLinear)
             tex.setMagfilter(Texture.FTLinear)
-            tex.setCompression(
-                Texture.CMOff
-            )  # Disable compression to avoid JPEG artifacts
+            tex.setCompression(Texture.CMOff)
         self.skybox.setBin("background", 0)
 
     def update(self, task):
+        self.UpdateHeadsetTracking()
         result = task.cont
         playerMoveSpeed = Wvars.speed / 10
         try:
@@ -197,6 +221,9 @@ class VrApp(BaseVrApp):
             self.player.getZ() + z_movement,
         )
         self.skybox.setPos(self.player.getPos())
+        if self.planetCam:
+            self.planetCam.setPos(0, 0, 0)
+            self.planetCam.setHpr(0, 0, 0)
 
         return result
 
@@ -225,6 +252,16 @@ class VrApp(BaseVrApp):
         self.accept("shift-up", self.updateKeyMap, ["down", False])
         self.accept("r", self.reset_view_orientation)
         self.accept("p", lambda: print(self.player.getPos()))
+        self.accept("wheel_up", lambda: setattr(Wvars, "speed", Wvars.speed + 0.1))
+        self.accept("wheel_down", lambda: setattr(Wvars, "speed", Wvars.speed - 0.1))
+        self.accept(
+            "control-wheel_up",
+            lambda: setattr(Wvars, "speed", Wvars.speed + 1),
+        )
+        self.accept(
+            "control-wheel_down",
+            lambda: setattr(Wvars, "speed", Wvars.speed - 1),
+        )
 
     def updateKeyMap(self, key, value):
         self.keyMap[key] = value
