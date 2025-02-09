@@ -1,7 +1,6 @@
 # This script reads a file and generates a blender model based off of the file
 
 import os
-import csv
 import bpy  # type: ignore
 import math
 from random import randint
@@ -9,34 +8,34 @@ from bpy_extras.io_utils import ImportHelper  # type: ignore
 from bpy.types import Operator  # type: ignore
 from bpy.props import StringProperty  # type: ignore
 import logging
+import time
 
 # Set up logging to Blender console
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bl_info = {
-    "name": "CSV Planet Importer",
+    "name": "Excel Planet Importer",
     "blender": (4, 0, 0),
-    "location": "File > Import > Import CSV",
+    "location": "File > Import",
     "category": "Import-Export",
     "version": (0, 0, 2),
     "author": "MaybeBroken",
-    "description": "Import a solar system CSV file to generate planet meshes.",
+    "description": "Import a solar system Excel file to generate planet meshes.",
 }
 import subprocess
 from threading import Thread
 import threading
 from time import sleep
 
-# Make sure the script is running in its own directory
-os.chdir(os.path.dirname(__file__))
-
+jarPath = os.path.abspath(__file__).replace("__init__.py", "excelToCsv.jar")
+batPath = os.path.abspath(__file__).replace("__init__.py", "convert.bat")
 
 # Sub-Program to convert the actual excel file to csv
-batProgram = r"""
+batProgram = f"""
 @echo off
 echo Converting %1 to %2...
-java -jar excelToCsv.jar --input %1 --sheet-name "System Builder" >> %2
+java -jar "{jarPath}" --input %1 --sheet-name "System Builder" >> %2
 echo Finished conversion, file saved to %2
 """
 
@@ -44,9 +43,11 @@ echo Finished conversion, file saved to %2
 # Wrapper function to call the sub-program
 def convert_excel_to_csv(input_file, output_file):
     """Takes an `input_file` and `output_file`,and converts the input file to a csvfile at the specified output path."""
+    output_file = os.path.abspath(output_file)
+    input_file = os.path.abspath(input_file)
 
     # Make sure the Converter is in the same directory as this script
-    if not os.path.exists("excelToCsv.jar"):
+    if not os.path.exists(jarPath):
         raise FileNotFoundError("The required excelToCsv.jar file is missing.")
 
     # Make sure the input file exists
@@ -54,19 +55,15 @@ def convert_excel_to_csv(input_file, output_file):
         raise FileNotFoundError(f"The input file {input_file} does not exist.")
 
     # Run the program if the output file does not exist, otherwise read the file and return it
-    if not os.path.exists(output_file):
+    if os.path.exists(output_file):
+        os.remove(output_file)
 
-        # Create the batch file
-        with open("convert.bat", "w") as f:
-            f.write(batProgram)
+    # Create the batch file
+    with open(batPath, "w") as f:
+        f.write(batProgram)
 
-        # Run the batch file
-        subprocess.run(["convert.bat", input_file, output_file])
-
-    with open(output_file) as file:
-        data = file.readlines()
-        for line in data:
-            line = line[3:]
+    # Run the batch file
+    subprocess.run([batPath, input_file, output_file])
 
     return output_file
 
@@ -75,8 +72,15 @@ def convert_excel(filepath):
     input_files = filepath
 
     # Create the output folder if it doesn't exist
-    if not os.path.exists("CSV_Output"):
-        os.makedirs("CSV_Output")
+    output_folder = os.path.join(
+        os.path.expanduser("~"), "AppData", "Roaming", "ExcelToBlend"
+    )
+    csv_output_folder = os.path.join(output_folder, "CSV_Output")
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    if not os.path.exists(csv_output_folder):
+        os.makedirs(csv_output_folder)
 
     # Limit the number of concurrent threads to 6
     semaphore = threading.Semaphore(6)
@@ -89,12 +93,18 @@ def convert_excel(filepath):
             nonlocal CSV_DATA_PATH
             with semaphore:
                 # Convert the excel file to csv
-                output_file = f"CSV_Output\\{input_file.removesuffix('.xlsx')}.csv"
+                output_file = os.path.join(
+                    csv_output_folder,
+                    f"{os.path.basename(input_file).removesuffix('.xlsx')}.csv",
+                )
                 CSV_DATA_PATH = convert_excel_to_csv(input_file, output_file)
 
         # Start the thread
         sleep(0.5)
-        Thread(target=_thread, args=(input_file,)).start()
+        Thread(
+            target=_thread,
+            args=(input_file if isinstance(input_file, list) else filepath,),
+        ).start()
 
     for thread in threading.enumerate():
         if thread is not threading.current_thread():
@@ -109,35 +119,35 @@ def convert_excel(filepath):
 
 class ImportCSV(Operator, ImportHelper):
     bl_idname = "import_csv.some_data"
-    bl_label = "Import CSV"
-    filename_ext = ".csv"
+    bl_label = "Import Excel"
+    filename_ext = ".xlsx"
     filter_glob: StringProperty(
-        default="*.csv",
+        default="*.xlsx",
         options={"HIDDEN"},
         maxlen=255,
     )  # type: ignore
 
     def execute(self, context=None):
-        FILEPATH = convert_excel(self.filepath)
-        with open(FILEPATH) as file:
-            data = file.readlines()
+        FILEPATH = convert_excel(os.path.abspath(self.filepath))
+        with open(FILEPATH, errors="ignore") as file:
+            data = file.read()
 
-        with open(FILEPATH, "w") as file:
-            file.writelines(
-                line
-                for line in data
-                if line
-                != ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,\n"
-            )
+        with open(FILEPATH, "w", errors="ignore") as file:
+            fileData = []
+            for line in data.splitlines():
+                fileData.append(",".join(line.split(",")[4:])[1:])
+            del fileData[0]
+            del fileData[1]
+            file.write("\n".join(fileData))
 
-        file = csv.reader(open(FILEPATH))
+        file = [line.split(",") for line in fileData]
 
         fileData = []
 
         for row in file:
             _row = []
             for column in row:
-                _row.append(column)
+                _row.append(column.strip())
             fileData.append(_row)
 
         INDEXES = []
@@ -297,7 +307,7 @@ class ImportCSV(Operator, ImportHelper):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportCSV.bl_idname, text="Import CSV")
+    self.layout.operator(ImportCSV.bl_idname, text="Import Excel")
 
 
 def register():
