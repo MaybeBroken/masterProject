@@ -17,11 +17,94 @@ logger = logging.getLogger(__name__)
 bl_info = {
     "name": "CSV Planet Importer",
     "blender": (4, 0, 0),
+    "location": "File > Import > Import CSV",
     "category": "Import-Export",
     "version": (0, 0, 2),
     "author": "MaybeBroken",
     "description": "Import a solar system CSV file to generate planet meshes.",
 }
+import subprocess
+from threading import Thread
+import threading
+from time import sleep
+
+# Make sure the script is running in its own directory
+os.chdir(os.path.dirname(__file__))
+
+
+# Sub-Program to convert the actual excel file to csv
+batProgram = r"""
+@echo off
+echo Converting %1 to %2...
+java -jar excelToCsv.jar --input %1 --sheet-name "System Builder" >> %2
+echo Finished conversion, file saved to %2
+"""
+
+
+# Wrapper function to call the sub-program
+def convert_excel_to_csv(input_file, output_file):
+    """Takes an `input_file` and `output_file`,and converts the input file to a csvfile at the specified output path."""
+
+    # Make sure the Converter is in the same directory as this script
+    if not os.path.exists("excelToCsv.jar"):
+        raise FileNotFoundError("The required excelToCsv.jar file is missing.")
+
+    # Make sure the input file exists
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(f"The input file {input_file} does not exist.")
+
+    # Run the program if the output file does not exist, otherwise read the file and return it
+    if not os.path.exists(output_file):
+
+        # Create the batch file
+        with open("convert.bat", "w") as f:
+            f.write(batProgram)
+
+        # Run the batch file
+        subprocess.run(["convert.bat", input_file, output_file])
+
+    with open(output_file) as file:
+        data = file.readlines()
+        for line in data:
+            line = line[3:]
+
+    return output_file
+
+
+def convert_excel(filepath):
+    input_files = filepath
+
+    # Create the output folder if it doesn't exist
+    if not os.path.exists("CSV_Output"):
+        os.makedirs("CSV_Output")
+
+    # Limit the number of concurrent threads to 6
+    semaphore = threading.Semaphore(6)
+    CSV_DATA_PATH = None
+
+    # Iterate through the excel files
+    for input_file in input_files:
+
+        def _thread(input_file):
+            nonlocal CSV_DATA_PATH
+            with semaphore:
+                # Convert the excel file to csv
+                output_file = f"CSV_Output\\{input_file.removesuffix('.xlsx')}.csv"
+                CSV_DATA_PATH = convert_excel_to_csv(input_file, output_file)
+
+        # Start the thread
+        sleep(0.5)
+        Thread(target=_thread, args=(input_file,)).start()
+
+    for thread in threading.enumerate():
+        if thread is not threading.current_thread():
+            thread.join()
+
+    # Wait for the batch file to finish, then delete it
+    if os.path.exists("convert.bat"):
+        os.remove("convert.bat")
+
+    return CSV_DATA_PATH
 
 
 class ImportCSV(Operator, ImportHelper):
@@ -35,7 +118,7 @@ class ImportCSV(Operator, ImportHelper):
     )  # type: ignore
 
     def execute(self, context=None):
-        FILEPATH = self.filepath
+        FILEPATH = convert_excel(self.filepath)
         with open(FILEPATH) as file:
             data = file.readlines()
 
@@ -164,6 +247,23 @@ class ImportCSV(Operator, ImportHelper):
                         35,
                     ),
                 )
+                set_parent_for_objects(
+                    [obj, atmosphere], bpy.data.objects[f"orbit-{planetId}"]
+                )
+                random_rotation_x = 360 - randint(0, 720)
+                random_rotation_y = 360 - randint(0, 720)
+                large_rotation_chance = randint(0, 10)
+                if large_rotation_chance == 0:
+                    random_rotation_x *= randint(1, 10)
+                    random_rotation_y *= randint(1, 10)
+                rotate_object(
+                    bpy.data.objects[f"orbit-{planetId}"],
+                    (
+                        math.radians(random_rotation_x / 100),
+                        math.radians(random_rotation_y / 100),
+                        0,
+                    ),
+                )
                 planetIndex += 1
 
         verts, faces = create_uv_sphere(float(fileData[7][3]), 150, 150)
@@ -215,6 +315,7 @@ if __name__ == "__main__":
 
 
 def add_mesh(name, verts, faces, edges=None, col_name="Collection"):
+    """Add a mesh to the specified collection."""
     if edges is None:
         edges = []
     if name in bpy.data.objects:
@@ -230,6 +331,7 @@ def add_mesh(name, verts, faces, edges=None, col_name="Collection"):
 
 
 def create_circle(radius, segments):
+    """Create a circle mesh."""
     verts = []
     edges = []
     for i in range(segments):
@@ -242,6 +344,7 @@ def create_circle(radius, segments):
 
 
 def create_uv_sphere(radius, segments, rings):
+    """Create a UV sphere mesh."""
     verts = []
     faces = []
     for i in range(rings + 1):
@@ -268,6 +371,7 @@ def create_uv_sphere(radius, segments, rings):
 
 
 def create_material(name, color):
+    """Create a material with the specified color."""
     mat = bpy.data.materials.new(name=name)
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
@@ -276,6 +380,7 @@ def create_material(name, color):
 
 
 def create_emission_material(name, color, strength):
+    """Create an emission material with the specified color and strength."""
     mat = bpy.data.materials.new(name=name)
     mat.use_nodes = True
     mat.node_tree.nodes.clear()
@@ -290,6 +395,7 @@ def create_emission_material(name, color, strength):
 
 
 def create_volume_material(name, color, density):
+    """Create a volume material with the specified color and density."""
     mat = bpy.data.materials.new(name=name)
     mat.use_nodes = True
     mat.node_tree.nodes.clear()
@@ -302,6 +408,7 @@ def create_volume_material(name, color, density):
 
 
 def duplicate_object(obj, name, location, scale):
+    """Duplicate the specified object."""
     new_obj = obj.copy()
     new_obj.data = obj.data.copy()
     new_obj.location = (
@@ -320,15 +427,46 @@ def duplicate_object(obj, name, location, scale):
 
 
 def apply_material(obj, material):
+    """Apply the material to the object."""
     if obj.data.materials:
         obj.data.materials[0] = material
     else:
         obj.data.materials.append(material)
 
 
-if __name__ == "__main__":
-    unregister()
-    ImportCSV.filepath = os.path.join(
-        os.path.dirname(__file__.replace("\\test1.blend", "")), "file.csv"
-    )
-    ImportCSV.execute(ImportCSV)
+def reparent(obj, parent):
+    """Reparent the object to a new parent."""
+    obj.parent = parent
+    obj.matrix_parent_inverse = parent.matrix_world.inverted()
+
+
+def set_parent_for_objects(objects: list, parent):
+    """Set the parent for a list of objects."""
+    for obj in objects:
+        reparent(obj, parent)
+
+
+def clear_materials(obj):
+    """Clear all materials from the object."""
+    if obj.data.materials:
+        obj.data.materials.clear()
+
+
+def delete_all_objects():
+    """Delete all objects in the current scene."""
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete(use_global=False)
+
+
+def rotate_object(obj, rotation):
+    """Rotate the specified object."""
+    obj.rotation_euler = rotation
+
+
+# if __name__ == "__main__":
+#     unregister()
+#     ImportCSV.filepath = os.path.join(
+#         os.path.dirname(__file__.replace("\\test1.blend", "")), "file.csv"
+#     )
+#     ImportCSV.execute(ImportCSV)

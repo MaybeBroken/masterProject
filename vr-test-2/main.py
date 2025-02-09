@@ -11,6 +11,8 @@ from panda3d.core import (
     CardMaker,
     NodePath,
     GraphicsOutput,
+    TextureStage,
+    OrthographicLens,
 )
 from direct.filter.FilterManager import FilterManager
 from math import sin, cos, pi
@@ -89,6 +91,7 @@ class VrApp(BaseVrApp):
         self.sceneDirectionalLightNodePath = self.render.attachNewNode(
             self.sceneDirectionalLight
         )
+        self.sceneDirectionalLight.setShadowCaster(True, 1024, 1024)
         self.render.setLight(self.sceneDirectionalLightNodePath)
         self.vrCamPos = (0, 0, 0)
 
@@ -104,11 +107,12 @@ class VrApp(BaseVrApp):
         self.controlBoard.setTransparency(TransparencyAttrib.MAlpha)
         self.planetRenderScene = NodePath("planetRenderScene")
 
-        self.planetBuffer = self.make_buffer((600, 600))
+        self.planetRenderLens = OrthographicLens()
+        self.planetBuffer = self.make_buffer((900, 900))
         self.planetBuffer.setClearColorActive(True)
         self.planetBuffer.setClearColor((0, 0, 0, 0))
         self.planetCam = self.makeCamera(
-            self.planetBuffer, scene=self.planetRenderScene, lens=self.camLens
+            self.planetBuffer, scene=self.planetRenderScene, lens=self.planetRenderLens
         )
         self.planetBufferText = Texture()
         self.planetBufferText.setFormat(Texture.F_rgba)
@@ -116,6 +120,8 @@ class VrApp(BaseVrApp):
         self.planetBuffer.addRenderTexture(
             self.planetBufferText, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
         )
+        self.planetBufferText.setWrapU(Texture.WMClamp)
+        self.planetBufferText.setWrapV(Texture.WMClamp)
 
         self.solarSystem = self.loader.load_model("models/test1.bam")
         self.solarSystemNode = self.solarSystem.instanceTo(self.planetRenderScene)
@@ -139,21 +145,23 @@ class VrApp(BaseVrApp):
         self.texCard = self.render.attachNewNode(CardMaker("texCard").generate())
         self.texCard.setTexture(self.planetBufferText)
         self.texCard.setPos(self.controlBoard.getPos(self.render))
-        self.texCard.setY(self.texCard.getY() - self.texCard.getScale()[0] / 2)
-        self.texCard.setH(self.texCard.getH() + 90)
-        self.texCard.setP(self.texCard.getP())
-        self.texCard.setR(self.texCard.getR() - 90)
+        self.texCard.setScale(6, 1, 4)
+        self.texCard.setX(self.texCard.getX() - self.texCard.getScale()[0] / 2)
+        self.texCard.setY(self.texCard.getY() - (self.texCard.getScale()[2] / 2))
+        self.texCard.setZ(self.texCard.getZ() - self.texCard.getScale()[1] / 2)
+        self.texCard.setZ(self.texCard.getZ() - 0.1)
+        self.controlBoard.hide()
+        self.texCard.setP(-60)
 
-        self.texCard.setScale(4)
+        self.texCard.setTexScale(TextureStage.getDefault(), 1, 1 * (4 / 6) - 0.05)
+
         self.texCard.setTransparency(TransparencyAttrib.MAlpha)
-
-        # self.transparencyShader = Shader.load("shaders/transparency.sha")
-        # self.texCard.setShader(self.transparencyShader)
+        self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
 
         self.loadSkybox()
         self.setupControls()
         self.setupShaders()
-        self.player.setPos(0, -0.9, 3.9)
+        self.player.setPos(0, -0.2, 3.9)
         self.taskMgr.add(self.update, "update")
 
     def setupShaders(self):
@@ -233,8 +241,8 @@ class VrApp(BaseVrApp):
         )
         self.skybox.setPos(self.player.getPos())
         if self.planetCam:
-            self.planetCam.setPos(self.planetRenderScene, 0, 0, 0)
-            self.planetCam.setHpr(self.planetRenderScene, 0, 0, 0)
+            self.planetCam.setPos(self.planetRenderScene, 0, 0, 10)
+            self.planetCam.setHpr(self.planetRenderScene, 0, -90, 0)
 
         return result
 
