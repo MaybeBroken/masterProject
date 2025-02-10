@@ -164,6 +164,18 @@ class VrApp(BaseVrApp):
         self.player.setPos(0, -0.2, 3.9)
         self.taskMgr.add(self.update, "update")
 
+    def changePlanetLensSize(self, size):
+        self.planetRenderLens.setFilmSize(size, size)
+    
+    def getPlanetLensSize(self):
+        return self.planetRenderLens.getFilmSize()[0]
+
+    def changePlanetLensPos(self, x, y):
+        self.planetRenderLens.setFilmOffset(x, y)
+    
+    def getPlanetLensPos(self):
+        return self.planetRenderLens.getFilmOffset()
+
     def setupShaders(self):
         for win, cam in [
             [self.win, self.cam],

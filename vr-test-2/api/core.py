@@ -402,6 +402,25 @@ class InputState(Structure):
     hand_triggers: dict = None
 
 
+class Hand:
+    def __init__(self):
+        self.active = False
+        self.trigger_value = 0.0
+        self.haptic_strength = 1
+        self.haptic_threshold = 0.9
+        self.haptic_frequency = 150
+
+
+class HandControl:
+    def __init__(self):
+        self.hand_left = Hand()
+        self.hand_right = Hand()
+        self.hands = [self.hand_left, self.hand_right]
+
+    def get_hands(self):
+        return self.hands
+
+
 class main:
     def start(self):
         self.image_offset = 0.1225
@@ -413,6 +432,7 @@ class main:
         self.session = None
         self.instance = None
         self.input = InputState()
+        self.HandControl = HandControl()
 
         while True:
             try:
@@ -843,23 +863,23 @@ class main:
                 active_action_sets=pointer(active_action_set),
             ),
         )
-        # Get pose and grab action state and start haptic vibrate when hand is 90% squeezed.
         for hand in Side:
-            grab_value = xr.get_action_state_float(
-                self.session,
-                xr.ActionStateGetInfo(
+            grab_value: xr.ActionStateFloat = xr.get_action_state_float(
+                session=self.session,
+                get_info=xr.ActionStateGetInfo(
                     action=self.input.grab_action,
                     subaction_path=self.input.hand_subaction_path[hand],
                 ),
             )
             if grab_value.is_active:
-                # Scale the rendered hand by 1.0f (open) to 0.5f (fully squeezed).
-                self.input.hand_scale[hand] = 1 - 0.5 * grab_value.current_state
-                if grab_value.current_state > 0.8:
+                if (
+                    grab_value.current_state
+                    > self.HandControl.hands[hand].haptic_threshold
+                ):
                     vibration = xr.HapticVibration(
-                        amplitude=0.5,
+                        amplitude=self.HandControl.hands[hand].haptic_strength,
                         duration=xr.MIN_HAPTIC_DURATION,
-                        frequency=xr.FREQUENCY_UNSPECIFIED,
+                        frequency=self.HandControl.hands[hand].haptic_frequency,
                     )
                     xr.apply_haptic_feedback(
                         session=self.session,
@@ -879,6 +899,8 @@ class main:
                 ),
             )
             self.input.hand_active[hand] = pose_state.is_active
+            self.HandControl.hands[hand].active = pose_state.is_active
+            self.HandControl.hands[hand].trigger_value = grab_value.current_state
 
     def create_shader_program(self, vertex_source, fragment_source):
         vertex_shader = self.compile_shader(vertex_source, GL.GL_VERTEX_SHADER)
@@ -892,6 +914,25 @@ class main:
         GL.glDeleteShader(vertex_shader)
         GL.glDeleteShader(fragment_shader)
         return program
+
+    def haptic_feedback(
+        self, hand: Side, amplitude: float, duration: float, frequency: float
+    ):
+        vibration = xr.HapticVibration(
+            amplitude=amplitude,
+            duration=duration,
+            frequency=frequency,
+        )
+        xr.apply_haptic_feedback(
+            session=self.session,
+            haptic_action_info=xr.HapticActionInfo(
+                action=self.input.vibrate_action,
+                subaction_path=self.input.hand_subaction_path[hand],
+            ),
+            haptic_feedback=cast(
+                byref(vibration), POINTER(xr.HapticBaseHeader)
+            ).contents,
+        )
 
 
 main = main()
