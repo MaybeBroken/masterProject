@@ -5,10 +5,13 @@ import bpy  # type: ignore
 import math
 from random import randint
 from bpy_extras.io_utils import ImportHelper  # type: ignore
-from bpy.types import Operator  # type: ignore
+from bpy.types import Operator, Panel  # type: ignore
 from bpy.props import StringProperty  # type: ignore
 import logging
-import time
+import sys
+
+if sys.platform != "win32":
+    raise OSError("This script is only supported on Windows.")
 
 # Set up logging to Blender console
 logging.basicConfig(level=logging.INFO)
@@ -117,6 +120,25 @@ def convert_excel(filepath):
     return CSV_DATA_PATH
 
 
+class MessagePopup(Operator):
+    bl_idname = "wm.message_popup"
+    bl_label = "Message"
+
+    message: StringProperty()  # type: ignore
+
+    def execute(self, context):
+        self.report({"INFO"}, self.message)
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+
+def show_message(message):
+    bpy.ops.wm.message_popup("INVOKE_DEFAULT", message=message)
+
+
 class ImportCSV(Operator, ImportHelper):
     bl_idname = "import_csv.some_data"
     bl_label = "Import Excel"
@@ -127,7 +149,12 @@ class ImportCSV(Operator, ImportHelper):
         maxlen=255,
     )  # type: ignore
 
-    def execute(self, context=None):
+    def execute(self, context):
+        # Execute the main function in a separate thread
+        Thread(target=self._sub_execute_thread, args=(context,)).start()
+        return {"FINISHED"}
+
+    def _sub_execute_thread(self, context=None):
         FILEPATH = convert_excel(os.path.abspath(self.filepath))
         with open(FILEPATH, errors="ignore") as file:
             data = file.read()
@@ -312,11 +339,13 @@ def menu_func_import(self, context):
 
 def register():
     bpy.utils.register_class(ImportCSV)
+    bpy.utils.register_class(MessagePopup)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 
 def unregister():
     bpy.utils.unregister_class(ImportCSV)
+    bpy.utils.unregister_class(MessagePopup)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
 
