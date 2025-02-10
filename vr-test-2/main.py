@@ -96,12 +96,14 @@ class VrApp(BaseVrApp):
         self.vrCamPos = (0, 0, 0)
 
         self.vrCamHpr = (0, 0, 0)
-        self.sphereModel = self.loader.load_model("models/misc/sphere")
-        self.sphereModel.setScale(0.7)
-        self.sphereModel.setColor(0.5, 0.5, 0.5, 1)
-        self.sphereModel.setBin("fixed", 10)
-        self.sphereModel.instanceTo(self.hand_left)
-        self.sphereModel.instanceTo(self.hand_right)
+        self.hand_left_model = self.loader.load_model("models/misc/sphere")
+        self.hand_left_model.setScale(0.7)
+        self.hand_left_model.reparentTo(self.hand_left)
+
+        self.hand_right_model = self.loader.load_model("models/misc/sphere")
+        self.hand_right_model.setScale(0.7)
+        self.hand_right_model.reparentTo(self.hand_right)
+
         self.controlBoard = self.ship.find("**/Display")
         self.controlBoard.setColor(0, 0, 0, 1)
         self.controlBoard.setTransparency(TransparencyAttrib.MAlpha)
@@ -123,7 +125,7 @@ class VrApp(BaseVrApp):
         self.planetBufferText.setWrapU(Texture.WMClamp)
         self.planetBufferText.setWrapV(Texture.WMClamp)
 
-        self.solarSystem = self.loader.load_model("models/test1.bam")
+        self.solarSystem = self.loader.load_model("models/Systems/strangeSystem.bam")
         self.solarSystemNode = self.solarSystem.instanceTo(self.planetRenderScene)
         self.solarSystemNode.setPos(0, 0, 0)
         self.solarSystem.setScale(0.001)
@@ -166,13 +168,13 @@ class VrApp(BaseVrApp):
 
     def changePlanetLensSize(self, size):
         self.planetRenderLens.setFilmSize(size, size)
-    
+
     def getPlanetLensSize(self):
         return self.planetRenderLens.getFilmSize()[0]
 
     def changePlanetLensPos(self, x, y):
         self.planetRenderLens.setFilmOffset(x, y)
-    
+
     def getPlanetLensPos(self):
         return self.planetRenderLens.getFilmOffset()
 
@@ -227,6 +229,19 @@ class VrApp(BaseVrApp):
             self.controlBoard.setTexture(self.cam_left_tex)
         except:
             self.controlBoard.setTextureOff()
+
+        if self.HandState[0].trigger_value > self.HandState[0].haptic_threshold:
+            self.hand_left.setScale(0.65)
+            self.hand_left_model.setColor(0.2, 0.5, 0.7, 1)
+        else:
+            self.hand_left.setScale(0.7)
+            self.hand_left_model.setColor(0.6, 0.6, 0.6, 1)
+        if self.HandState[1].trigger_value > self.HandState[1].haptic_threshold:
+            self.hand_right.setScale(0.65)
+            self.hand_right_model.setColor(0.2, 0.5, 0.7, 1)
+        else:
+            self.hand_right.setScale(0.7)
+            self.hand_right_model.setColor(0.6, 0.6, 0.6, 1)
 
         x_movement = 0
         y_movement = 0

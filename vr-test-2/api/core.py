@@ -108,7 +108,7 @@ class BaseVrApp(ShowBase):
         self.vrCamPos = (0, 0, 0)
         self.vrCamHpr = (0, 0, 0)
         self.vrCamPosOffset = (0, 0, -1.4)
-        self.vrControllerPosOffset = (0, 0, -1.385)
+        self.vrControllerPosOffset = (0, 0, -1.375)
         self.vrCamHprOffset = (0, 0, 0)
         self.vrControllerHprOffset = (0, 0, 0)
 
@@ -190,6 +190,13 @@ class BaseVrApp(ShowBase):
         self.vrLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
         self.cam_left.setPos(-0.25, 0, 0)
         self.cam_right.setPos(0.25, 0, 0)
+        self.HandState: list[Hand, Hand] = main.HandControl.get_hands()
+        self.HandControl = HandControl()
+
+    def haptic_feedback(
+        self, hand: Side, amplitude: float, duration: int, frequency: int
+    ):
+        main.haptic_feedback(hand, amplitude, duration, frequency)
 
     def UpdateHeadsetTracking(self):
         try:
@@ -202,6 +209,8 @@ class BaseVrApp(ShowBase):
             self.camera.setHpr(self.vrCam.getHpr())
             self.camLens.setFov(self.vrLens.getFov())
             self.camLens.setAspectRatio(self.lensResolution[0] / self.lensResolution[1])
+            self.HandState: list[Hand, Hand] = main.HandControl.get_hands()
+            main.HandControl = self.HandControl
 
             if self.autoCamPositioning:
                 self.vrCam.setPos(
@@ -235,34 +244,34 @@ class BaseVrApp(ShowBase):
                             (self.vrControllerPose["left"].position.x)
                             + self.vrControllerPosOffset[0]
                         )
-                        * 8,
+                        * 9,
                         (
                             (self.vrControllerPose["left"].position.z)
                             + self.vrControllerPosOffset[1]
                         )
-                        * -8,
+                        * -9,
                         (
                             (self.vrControllerPose["left"].position.y)
                             + self.vrControllerPosOffset[2]
                         )
-                        * 8,
+                        * 9,
                     )
                     self.hand_right.setPos(
                         (
                             (self.vrControllerPose["right"].position.x)
                             + self.vrControllerPosOffset[0]
                         )
-                        * 8,
+                        * 9,
                         (
                             (self.vrControllerPose["right"].position.z)
                             + self.vrControllerPosOffset[1]
                         )
-                        * -8,
+                        * -9,
                         (
                             (self.vrControllerPose["right"].position.y)
                             + self.vrControllerPosOffset[2]
                         )
-                        * 8,
+                        * 9,
                     )
                 except:
                     pass
@@ -432,7 +441,7 @@ class main:
         self.session = None
         self.instance = None
         self.input = InputState()
-        self.HandControl = HandControl()
+        self.HandControl: HandControl = HandControl()
 
         while True:
             try:
@@ -916,7 +925,7 @@ class main:
         return program
 
     def haptic_feedback(
-        self, hand: Side, amplitude: float, duration: float, frequency: float
+        self, hand: int, amplitude: float, duration: int, frequency: int
     ):
         vibration = xr.HapticVibration(
             amplitude=amplitude,
