@@ -202,8 +202,8 @@ class ImportCSV(Operator, ImportHelper):
                 planetId = f"planet-{randint(0, 100000000)}"
                 if float(radius) > 0:
                     _radius = float(radius)
-                    segments = 150
-                    rings = 150
+                    segments = 60
+                    rings = 60
                     verts, faces = create_uv_sphere(_radius / 3.3, segments, rings)
                     if str(planetId) in bpy.data.objects:
                         bpy.data.objects.remove(
@@ -300,6 +300,20 @@ class ImportCSV(Operator, ImportHelper):
             ),
         )
 
+        universeId = randint(0, 100000000)
+        add_empty(f"UNIVERSE-{universeId}", (0, 0, 0), 75)
+        meshList = []
+        for planetId in PLANETIDS:
+            meshList.append(bpy.data.objects[f"orbit-{planetId}"])
+
+        meshList.append(bpy.data.objects[f"sun-{sunId}"])
+        meshList.append(bpy.data.objects[f"flare-{sunId}"])
+
+        set_parent_for_objects(
+            meshList,
+            bpy.data.objects[f"UNIVERSE-{universeId}"],
+        )
+
         return {"FINISHED"}
 
 
@@ -375,6 +389,52 @@ def create_uv_sphere(radius, segments, rings):
                 ]
             )
     return verts, faces
+
+
+def create_cube(size):
+    """Create a cube mesh."""
+    half_size = size / 2
+    verts = [
+        (-half_size, -half_size, -half_size),
+        (half_size, -half_size, -half_size),
+        (half_size, half_size, -half_size),
+        (-half_size, half_size, -half_size),
+        (-half_size, -half_size, half_size),
+        (half_size, -half_size, half_size),
+        (half_size, half_size, half_size),
+        (-half_size, half_size, half_size),
+    ]
+    faces = [
+        (0, 1, 2, 3),
+        (4, 5, 6, 7),
+        (0, 1, 5, 4),
+        (2, 3, 7, 6),
+        (0, 3, 7, 4),
+        (1, 2, 6, 5),
+    ]
+    return verts, faces
+
+
+def create_plane(size):
+    """Create a plane mesh."""
+    half_size = size / 2
+    verts = [
+        (-half_size, -half_size, 0),
+        (half_size, -half_size, 0),
+        (half_size, half_size, 0),
+        (-half_size, half_size, 0),
+    ]
+    faces = [(0, 1, 2, 3)]
+    return verts, faces
+
+
+def add_empty(name, location, scale):
+    """Create an empty object."""
+    empty = bpy.data.objects.new(name, None)
+    empty.empty_display_size = scale
+    empty.empty_display_type = "SPHERE"
+    empty.location = location
+    bpy.context.collection.objects.link(empty)
 
 
 def create_material(name, color):
@@ -469,11 +529,4 @@ def delete_all_objects():
 def rotate_object(obj, rotation):
     """Rotate the specified object."""
     obj.rotation_euler = rotation
-
-
-# if __name__ == "__main__":
-#     unregister()
-#     ImportCSV.filepath = os.path.join(
-#         os.path.dirname(__file__.replace("\\test1.blend", "")), "file.csv"
-#     )
-#     ImportCSV.execute(ImportCSV)
+    obj.keyframe_insert(data_path="rotation_euler", frame=1)
