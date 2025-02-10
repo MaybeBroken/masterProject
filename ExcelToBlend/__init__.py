@@ -31,10 +31,10 @@ from threading import Thread
 import threading
 from time import sleep
 
+
 jarPath = os.path.abspath(__file__).replace("__init__.py", "excelToCsv.jar")
 batPath = os.path.abspath(__file__).replace("__init__.py", "convert.bat")
 
-# Sub-Program to convert the actual excel file to csv
 batProgram = f"""
 @echo off
 echo Converting %1 to %2...
@@ -43,30 +43,19 @@ echo Finished conversion, file saved to %2
 """
 
 
-# Wrapper function to call the sub-program
 def convert_excel_to_csv(input_file, output_file):
-    """Takes an `input_file` and `output_file`,and converts the input file to a csvfile at the specified output path."""
+    """Takes an `input_file` and `output_file`, and converts the input file to a csv file at the specified output path."""
     output_file = os.path.abspath(output_file)
     input_file = os.path.abspath(input_file)
-
-    # Make sure the Converter is in the same directory as this script
     if not os.path.exists(jarPath):
         raise FileNotFoundError("The required excelToCsv.jar file is missing.")
-
-    # Make sure the input file exists
     if not os.path.exists(input_file):
         raise FileNotFoundError(f"The input file {input_file} does not exist.")
 
-    # Run the program if the output file does not exist, otherwise read the file and return it
-    if os.path.exists(output_file):
-        os.remove(output_file)
-
-    # Create the batch file
     with open(batPath, "w") as f:
         f.write(batProgram)
 
-    # Run the batch file
-    subprocess.run([batPath, input_file, output_file])
+    subprocess.run([batPath, input_file, output_file], check=True)
 
     return output_file
 
@@ -74,7 +63,6 @@ def convert_excel_to_csv(input_file, output_file):
 def convert_excel(filepath):
     input_files = filepath
 
-    # Create the output folder if it doesn't exist
     output_folder = os.path.join(
         os.path.expanduser("~"), "AppData", "Roaming", "ExcelToBlend"
     )
@@ -84,59 +72,44 @@ def convert_excel(filepath):
         os.makedirs(output_folder)
     if not os.path.exists(csv_output_folder):
         os.makedirs(csv_output_folder)
-
-    # Limit the number of concurrent threads to 6
-    semaphore = threading.Semaphore(6)
+    semaphore = threading.Semaphore(10)
     CSV_DATA_PATH = None
-
-    # Iterate through the excel files
-    for input_file in input_files:
+    for input_file in input_files if isinstance(filepath, list) else [filepath]:
 
         def _thread(input_file):
             nonlocal CSV_DATA_PATH
             with semaphore:
-                # Convert the excel file to csv
-                output_file = os.path.join(
+                base_output_file = os.path.join(
                     csv_output_folder,
                     f"{os.path.basename(input_file).removesuffix('.xlsx')}.csv",
                 )
+                output_file = base_output_file
+                counter = 1
+                while os.path.exists(output_file):
+                    output_file = os.path.join(
+                        csv_output_folder,
+                        f"{os.path.basename(input_file).removesuffix('.xlsx')}_{counter}.csv",
+                    )
+                    counter += 1
                 CSV_DATA_PATH = convert_excel_to_csv(input_file, output_file)
 
-        # Start the thread
         sleep(0.5)
         Thread(
             target=_thread,
-            args=(input_file if isinstance(input_file, list) else filepath,),
+            args=(input_file,),
         ).start()
 
     for thread in threading.enumerate():
-        if thread is not threading.current_thread():
+        if (
+            thread is not threading.current_thread()
+            and thread is not threading.main_thread()
+        ):
             thread.join()
 
-    # Wait for the batch file to finish, then delete it
     if os.path.exists("convert.bat"):
         os.remove("convert.bat")
 
     return CSV_DATA_PATH
-
-
-class MessagePopup(Operator):
-    bl_idname = "wm.message_popup"
-    bl_label = "Message"
-
-    message: StringProperty()  # type: ignore
-
-    def execute(self, context):
-        self.report({"INFO"}, self.message)
-        return {"FINISHED"}
-
-    def invoke(self, context, event):
-        wm = context.window_manager
-        return wm.invoke_props_dialog(self)
-
-
-def show_message(message):
-    bpy.ops.wm.message_popup("INVOKE_DEFAULT", message=message)
 
 
 class ImportCSV(Operator, ImportHelper):
@@ -150,7 +123,6 @@ class ImportCSV(Operator, ImportHelper):
     )  # type: ignore
 
     def execute(self, context):
-        # Execute the main function in a separate thread
         Thread(target=self._sub_execute_thread, args=(context,)).start()
         return {"FINISHED"}
 
@@ -217,8 +189,6 @@ class ImportCSV(Operator, ImportHelper):
         print(f"Sun radius is {fileData[7][3]}")
         print()
         logger.info(f"Found {PLANETNUM} planets\n")
-
-        # Create meshes in blender
 
         PLANETIDS = []
         for radius in DATA["Radius (Earth radii)"]:
@@ -334,18 +304,16 @@ class ImportCSV(Operator, ImportHelper):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportCSV.bl_idname, text="Import Excel")
+    self.layout.operator(ImportCSV.bl_idname, text="Solar System Excel")
 
 
 def register():
     bpy.utils.register_class(ImportCSV)
-    bpy.utils.register_class(MessagePopup)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 
 def unregister():
     bpy.utils.unregister_class(ImportCSV)
-    bpy.utils.unregister_class(MessagePopup)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
 
