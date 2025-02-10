@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bl_info = {
-    "name": "Excel Planet Importer",
+    "name": "ExcelToBlend",
     "blender": (4, 0, 0),
     "location": "File > Import",
     "category": "Import-Export",
@@ -122,7 +122,10 @@ class ImportCSV(Operator, ImportHelper):
         maxlen=255,
     )  # type: ignore
 
-    def execute(self, context):
+    def __init__(self):
+        self.filepath = None
+
+    def execute(self, context=None):
         Thread(target=self._sub_execute_thread, args=(context,)).start()
         return {"FINISHED"}
 
