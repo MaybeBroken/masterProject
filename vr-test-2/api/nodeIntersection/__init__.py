@@ -5,8 +5,75 @@ from .intersection import (
     compute_intersection_points,
     panda_mesh_to_numpy,
 )
-from panda3d.core import GeomNode, Sphere
+from panda3d.core import (
+    NodePath,
+    Geom,
+    GeomNode,
+    GeomTriangles,
+    GeomVertexFormat,
+    GeomVertexData,
+    GeomVertexWriter,
+)
 from time import sleep
+import numpy as np
+
+
+def Sphere(radius, lat, lon):
+    """
+    Create a UV sphere mesh with the given radius and position.
+    """
+
+    # Create vertex data format
+    format = GeomVertexFormat.get_v3n3c4t2()
+    vdata = GeomVertexData("vertices", format, Geom.UH_static)
+
+    # Create vertex writer
+    vertex_writer = GeomVertexWriter(vdata, "vertex")
+    normal_writer = GeomVertexWriter(vdata, "normal")
+    color_writer = GeomVertexWriter(vdata, "color")
+    texcoord_writer = GeomVertexWriter(vdata, "texcoord")
+
+    # Generate vertices
+    for i in range(lat + 1):
+        lat_angle = np.pi * i / lat
+        for j in range(lon + 1):
+            lon_angle = 2 * np.pi * j / lon
+            x = radius * np.sin(lat_angle) * np.cos(lon_angle)
+            y = radius * np.sin(lat_angle) * np.sin(lon_angle)
+            z = radius * np.cos(lat_angle)
+            vertex_writer.add_data3f(x, y, z)
+            normal_writer.add_data3f(x / radius, y / radius, z / radius)
+            color_writer.add_data4f(1.0, 1.0, 1.0, 1.0)
+            texcoord_writer.add_data2f(j / lon, i / lat)
+
+    # Create triangles
+    tris = []
+    for i in range(lat):
+        for j in range(lon):
+            tris.append(
+                (
+                    i * (lon + 1) + j,
+                    (i + 1) * (lon + 1) + j,
+                    (i + 1) * (lon + 1) + (j + 1),
+                )
+            )
+            tris.append(
+                (
+                    i * (lon + 1) + j,
+                    (i + 1) * (lon + 1) + (j + 1),
+                    i * (lon + 1) + (j + 1),
+                )
+            )
+
+    # Create geom and add triangles
+    geom = Geom(vdata)
+    triangles = GeomTriangles(Geom.UH_static)
+    for tri in tris:
+        triangles.add_vertices(*tri)
+    geom.add_primitive(triangles)
+    node = GeomNode("sphere")
+    node.add_geom(geom)
+    return node
 
 
 def create_uv_sphere(radius, resolution: tuple = (30, 30)):
@@ -14,30 +81,26 @@ def create_uv_sphere(radius, resolution: tuple = (30, 30)):
     Create a UV sphere mesh with the given radius and position.
     """
     sphere = Sphere(radius, resolution[0], resolution[0])
-    node = GeomNode("sphere")
-    node.add_geom(sphere)
-    return node
+    sphereNode = NodePath("sphere")
+    sphereNode.attach_new_node(sphere)
+    return sphereNode
 
 
 class BaseActor:
     def __init__(self, radius, position, mesh=None):
         self.radius = radius
         self.position = position
-        if not mesh:
-            mesh = create_uv_sphere(radius)
+        self.sphere = create_uv_sphere(radius)
         self.mesh = mesh
         self.collision_report = []
-        return self
 
 
 class BaseCollider:
     def __init__(self, radius, position, mesh=None):
         self.radius = radius
         self.position = position
-        if not mesh:
-            mesh = create_uv_sphere(radius)
+        self.sphere = create_uv_sphere(radius)
         self.mesh = mesh
-        return self
 
 
 class ComplexActor:
@@ -45,14 +108,12 @@ class ComplexActor:
         self.mesh = mesh
         self.array = panda_mesh_to_numpy(mesh)
         self.collision_report = []
-        return self
 
 
 class ComplexCollider:
     def __init__(self, mesh):
         self.mesh = mesh
         self.array = panda_mesh_to_numpy(mesh)
-        return self
 
 
 class CollisionReport:
@@ -67,7 +128,6 @@ class CollisionReport:
             "actor_position": actor_position,
             "collider_position": collider_position,
         }
-        return self
 
 
 class Mgr:
@@ -78,22 +138,22 @@ class Mgr:
         self.complex_colliders: list[ComplexCollider] = []
         self.reportedCollisions: list[CollisionReport] = []
 
-    def add_base_actor(self, radius, position, mesh=None):
+    def add_base_actor(self, radius, position, mesh=None) -> BaseActor:
         actor = BaseActor(radius, position, mesh)
         self.base_actors.append(actor)
         return actor
 
-    def add_complex_actor(self, mesh):
+    def add_complex_actor(self, mesh) -> ComplexActor:
         actor = ComplexActor(mesh)
         self.complex_actors.append(actor)
         return actor
 
-    def add_base_collider(self, radius, position, mesh=None):
+    def add_base_collider(self, radius, position, mesh=None) -> BaseCollider:
         collider = BaseCollider(radius, position, mesh)
         self.base_colliders.append(collider)
         return collider
 
-    def add_complex_collider(self, mesh):
+    def add_complex_collider(self, mesh) -> ComplexCollider:
         collider = ComplexCollider(mesh)
         self.complex_colliders.append(collider)
         return collider
@@ -115,11 +175,21 @@ class Mgr:
         return collider
 
     def update(self):
+        for report in self.reportedCollisions:
+            report.actor.collision_report.remove(report)
+            report.collider.collision_report.remove(report)
+
         if len(self.base_actors) == 0 and len(self.complex_actors) == 0:
             return self.reportedCollisions
         if len(self.base_colliders) != 0:
             for actor in self.base_actors:
+                if actor.mesh is not None:
+                    actor.position = actor.mesh.getPos(base.render)  # type: ignore
+                    actor.sphere.setPos(actor.position)
                 for collider in self.base_colliders:
+                    if collider.mesh is not None:
+                        collider.position = collider.mesh.getPos(base.render)  # type: ignore
+                        collider.sphere.setPos(collider.position)
                     for positionIndex in range(len(actor.position)):
                         if (
                             actor.position[positionIndex]

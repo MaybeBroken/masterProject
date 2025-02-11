@@ -11,7 +11,7 @@ from .nodeIntersection import (
     do_meshes_intersect,
     compute_intersection_points,
     panda_mesh_to_numpy,
-    Mgr,
+    Mgr as NodeIntersection,
 )
 
 # import opensimplex

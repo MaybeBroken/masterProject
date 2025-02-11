@@ -164,6 +164,20 @@ class VrApp(BaseVrApp):
         self.setupControls()
         self.setupShaders()
         self.player.setPos(0, -0.2, 3.9)
+        self.hand_left_actor = NodeIntersection.add_base_actor(
+            radius=1, position=self.hand_left.getPos(), mesh=self.hand_left
+        )
+        self.hand_right_actor = NodeIntersection.add_base_actor(
+            radius=1, position=self.hand_right.getPos(), mesh=self.hand_right
+        )
+        self.hand_left_actor.sphere.reparentTo(self.render)
+        self.hand_right_actor.sphere.reparentTo(self.render)
+
+        self.collider = NodeIntersection.add_base_collider(
+            radius=2, position=self.player.getPos(), mesh=self.player
+        )
+        self.collider.sphere.reparentTo(self.render)
+        NodeIntersection.start()
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensSize(self, size):
