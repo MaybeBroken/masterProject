@@ -7,7 +7,14 @@ import random
 import string
 import shutil
 import time
+from .nodeIntersection import (
+    do_meshes_intersect,
+    compute_intersection_points,
+    panda_mesh_to_numpy,
+)
+
 # import opensimplex
+
 
 class Misc:
     def get_random_string(length=10):

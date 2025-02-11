@@ -40,6 +40,53 @@ class Side(enum.IntEnum):
     RIGHT = 1
 
 
+class InputState(Structure):
+    def __init__(self):
+        super().__init__()
+        self.hand_scale[:] = [1, 1]
+
+    _fields_ = [
+        ("action_set", xr.ActionSet),
+        ("grab_action", xr.Action),
+        ("pose_action", xr.Action),
+        ("vibrate_action", xr.Action),
+        ("quit_action", xr.Action),
+        ("hand_subaction_path", xr.Path * len(Side)),
+        ("hand_space", xr.Space * len(Side)),
+        ("hand_scale", c_float * len(Side)),
+        ("hand_active", xr.Bool32 * len(Side)),
+    ]
+    action_set = None
+    grab_action = None
+    pose_action = None
+    vibrate_action = None
+    quit_action = None
+    hand_subaction_path = None
+    hand_space = None
+    hand_scale = None
+    hand_active = None
+    hand_triggers: dict = None
+
+
+class Hand:
+    def __init__(self):
+        self.active = False
+        self.trigger_value = 0.0
+        self.haptic_strength = 1
+        self.haptic_threshold = 0.9
+        self.haptic_frequency = 150
+
+
+class HandControl:
+    def __init__(self):
+        self.hand_left = Hand()
+        self.hand_right = Hand()
+        self.hands = [self.hand_left, self.hand_right]
+
+    def get_hands(self):
+        return self.hands
+
+
 class BaseVrApp(ShowBase):
     def __init__(
         self,
@@ -381,53 +428,6 @@ class BaseVrApp(ShowBase):
         image = np.array(texture.getRamImageAs("RGB"), dtype=np.uint8)
         image = image.reshape((texture.getYSize(), texture.getXSize(), 3))
         return image
-
-
-class InputState(Structure):
-    def __init__(self):
-        super().__init__()
-        self.hand_scale[:] = [1, 1]
-
-    _fields_ = [
-        ("action_set", xr.ActionSet),
-        ("grab_action", xr.Action),
-        ("pose_action", xr.Action),
-        ("vibrate_action", xr.Action),
-        ("quit_action", xr.Action),
-        ("hand_subaction_path", xr.Path * len(Side)),
-        ("hand_space", xr.Space * len(Side)),
-        ("hand_scale", c_float * len(Side)),
-        ("hand_active", xr.Bool32 * len(Side)),
-    ]
-    action_set = None
-    grab_action = None
-    pose_action = None
-    vibrate_action = None
-    quit_action = None
-    hand_subaction_path = None
-    hand_space = None
-    hand_scale = None
-    hand_active = None
-    hand_triggers: dict = None
-
-
-class Hand:
-    def __init__(self):
-        self.active = False
-        self.trigger_value = 0.0
-        self.haptic_strength = 1
-        self.haptic_threshold = 0.9
-        self.haptic_frequency = 150
-
-
-class HandControl:
-    def __init__(self):
-        self.hand_left = Hand()
-        self.hand_right = Hand()
-        self.hands = [self.hand_left, self.hand_right]
-
-    def get_hands(self):
-        return self.hands
 
 
 class main:
