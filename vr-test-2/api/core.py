@@ -33,6 +33,7 @@ from math import asin, degrees, radians, sqrt, sin, cos
 import os
 from ctypes import pointer, Structure, c_float, POINTER, cast, byref
 import enum
+from .utils import *
 
 
 class Side(enum.IntEnum):
