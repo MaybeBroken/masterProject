@@ -18,6 +18,7 @@ from time import sleep
 import numpy as np
 
 
+@staticmethod
 def Sphere(radius, lat, lon):
     """
     Create a UV sphere mesh with the given radius and position.
@@ -76,6 +77,7 @@ def Sphere(radius, lat, lon):
     return node
 
 
+@staticmethod
 def create_uv_sphere(radius, resolution: tuple = (30, 30)):
     """
     Create a UV sphere mesh with the given radius and position.
@@ -86,6 +88,7 @@ def create_uv_sphere(radius, resolution: tuple = (30, 30)):
     return sphereNode
 
 
+@staticmethod
 def getTotalDistance(actor, collider):
     """
     Calculate the total distance between two actors or colliders.
@@ -165,6 +168,18 @@ class Mgr:
         self.complex_colliders: list[ComplexCollider] = []
         self.reportedCollisions: list[CollisionReport] = []
 
+    def showCollisions(self):
+        for actor in self.base_actors:
+            actor.sphere.show()
+        for collider in self.base_colliders:
+            actor.sphere.show()
+
+    def hideCollisions(self):
+        for actor in self.base_actors:
+            actor.sphere.hide()
+        for collider in self.base_colliders:
+            actor.sphere.hide()
+
     def add_base_actor(self, radius, position, name, mesh=None) -> BaseActor:
         actor = BaseActor(radius, position, name, mesh)
         self.base_actors.append(actor)
@@ -201,6 +216,53 @@ class Mgr:
         self.complex_colliders.remove(collider)
         return collider
 
+    def setActorPosition(self, actor: BaseActor, position: tuple[3]) -> BaseActor:
+        actor.position = position
+        return actor
+
+    def setColliderPosition(
+        self, collider: BaseCollider, position: tuple[3]
+    ) -> BaseCollider:
+        collider.position = position
+        return collider
+
+    def setActorMesh(self, actor: BaseActor, mesh: NodePath) -> BaseActor:
+        actor.mesh = mesh
+        return actor
+
+    def setColliderMesh(self, collider: BaseCollider, mesh: NodePath) -> BaseCollider:
+        collider.mesh = mesh
+        return collider
+
+    def transformActorType(
+        self, actor: BaseActor | ComplexActor
+    ) -> ComplexActor | BaseActor:
+        if isinstance(actor, BaseActor):
+            new_actor = ComplexActor(actor.mesh, actor.name)
+            self.complex_actors.append(new_actor)
+            self.base_actors.remove(actor)
+            return new_actor
+        elif isinstance(actor, ComplexActor):
+            new_actor = BaseActor(
+                radius=1,
+                position=actor.mesh.getPos(base.render),  # type: ignore
+                name=actor.name,
+                mesh=actor.mesh,
+            )
+            self.base_actors.append(new_actor)
+            self.complex_actors.remove(actor)
+            return new_actor
+
+    def clear(self):
+        self.base_actors.clear()
+        self.complex_actors.clear()
+        self.base_colliders.clear()
+        self.complex_colliders.clear()
+        self.reportedCollisions.clear()
+
+    def get_reported_collisions(self) -> list[CollisionReport]:
+        return self.reportedCollisions
+
     def update(self):
         del self.reportedCollisions[:]
         for actor in self.base_actors:
@@ -209,7 +271,7 @@ class Mgr:
             collider.collision_report = None
 
         if len(self.base_actors) == 0 and len(self.complex_actors) == 0:
-            return self.reportedCollisions
+            pass
         if len(self.base_colliders) != 0:
             collider: BaseCollider
             for collider in self.base_colliders:

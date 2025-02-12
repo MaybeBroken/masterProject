@@ -168,6 +168,15 @@ class VrApp(BaseVrApp):
         self.leftThrottle = self.ship.find("**/leftHandle")
         self.rightThrottle = self.ship.find("**/rightHandle")
 
+        self.leftThrottle.wrtReparentTo(self.render)
+        self.rightThrottle.wrtReparentTo(self.render)
+
+        self.baseLeftThrottlePos = self.leftThrottle.getPos()
+        self.baseLeftThrottleHpr = self.leftThrottle.getHpr()
+
+        self.baseRightThrottlePos = self.rightThrottle.getPos()
+        self.baseRightThrottleHpr = self.rightThrottle.getHpr()
+
         self.leftThrottleCollider: BaseCollider = NodeIntersection.add_base_collider(
             radius=0.5,
             position=self.leftThrottle.getPos(),
@@ -310,8 +319,17 @@ class VrApp(BaseVrApp):
 
         if self.leftThrottleCollider.collision_report is not None:
             self.leftThrottle.setColorScale(0.2, 0.5, 1, 1)
+            self.leftThrottle.setPos(self.baseLeftThrottlePos + (0, 0, 0.03))
         else:
             self.leftThrottle.setColorScale(1, 1, 1, 1)
+            self.leftThrottle.setPos(self.baseLeftThrottlePos)
+
+        if self.rightThrottleCollider.collision_report is not None:
+            self.rightThrottle.setColorScale(0.2, 0.5, 1, 1)
+            self.rightThrottle.setPos(self.baseRightThrottlePos + (0, 0, 0.03))
+        else:
+            self.rightThrottle.setColorScale(1, 1, 1, 1)
+            self.rightThrottle.setPos(self.baseRightThrottlePos)
         return result
 
     def setupControls(self):
