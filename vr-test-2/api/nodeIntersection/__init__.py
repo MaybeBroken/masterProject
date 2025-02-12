@@ -86,40 +86,61 @@ def create_uv_sphere(radius, resolution: tuple = (30, 30)):
     return sphereNode
 
 
+def getTotalDistance(actor, collider):
+    """
+    Calculate the total distance between two actors or colliders.
+    """
+    return np.linalg.norm(np.array(actor.position) - np.array(collider.position))
+
+
 class BaseActor:
-    def __init__(self, radius, position, mesh=None):
-        self.radius = radius
-        self.position = position
+    def __init__(self, radius: float, position: tuple[3], name: str, mesh=None):
+        self.radius: float = radius
+        self.position: tuple[3] = position
         self.sphere = create_uv_sphere(radius)
-        self.mesh = mesh
-        self.collision_report = []
+        self.mesh: NodePath = mesh
+        self.name: str = name
+        self.collision_report: CollisionReport = None
 
 
 class BaseCollider:
-    def __init__(self, radius, position, mesh=None):
-        self.radius = radius
-        self.position = position
-        self.sphere = create_uv_sphere(radius)
-        self.mesh = mesh
+    def __init__(self, radius: float, position: tuple[3], name: str, mesh=None):
+        self.radius: float = radius
+        self.position: tuple[3] = position
+        self.sphere: NodePath = create_uv_sphere(radius)
+        self.mesh: NodePath = mesh
+        self.name: str = name
+        self.collision_report: CollisionReport = None
 
 
 class ComplexActor:
-    def __init__(self, mesh):
-        self.mesh = mesh
+    def __init__(self, mesh: NodePath, name: str):
+        self.mesh: NodePath = mesh
         self.array = panda_mesh_to_numpy(mesh)
-        self.collision_report = []
+        self.name: str = name
+        self.collision_report: CollisionReport = None
 
 
 class ComplexCollider:
-    def __init__(self, mesh):
-        self.mesh = mesh
+    def __init__(self, mesh: NodePath, name: str):
+        self.mesh: NodePath = mesh
         self.array = panda_mesh_to_numpy(mesh)
+        self.name: str = name
+        self.collision_report: CollisionReport = None
 
 
 class CollisionReport:
-    def __init__(self, actor, collider, actor_position, collider_position):
+    def __init__(
+        self,
+        actor: BaseActor,
+        collider: BaseCollider,
+        actor_position: tuple[3],
+        collider_position: tuple[3],
+    ):
         self.actor = actor
         self.collider = collider
+        self.actorStr = actor.name
+        self.colliderStr = collider.name
         self.actor_position = actor_position
         self.collider_position = collider_position
         self.report = {
@@ -128,6 +149,12 @@ class CollisionReport:
             "actor_position": actor_position,
             "collider_position": collider_position,
         }
+
+    def __str__(self):
+        return f"CollisionReport(actor: {self.actorStr}, collider: {self.colliderStr}, actor_position: {self.actor_position}, collider_position: {self.collider_position})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Mgr:
@@ -138,23 +165,23 @@ class Mgr:
         self.complex_colliders: list[ComplexCollider] = []
         self.reportedCollisions: list[CollisionReport] = []
 
-    def add_base_actor(self, radius, position, mesh=None) -> BaseActor:
-        actor = BaseActor(radius, position, mesh)
+    def add_base_actor(self, radius, position, name, mesh=None) -> BaseActor:
+        actor = BaseActor(radius, position, name, mesh)
         self.base_actors.append(actor)
         return actor
 
-    def add_complex_actor(self, mesh) -> ComplexActor:
-        actor = ComplexActor(mesh)
+    def add_complex_actor(self, name, mesh) -> ComplexActor:
+        actor = ComplexActor(mesh, name)
         self.complex_actors.append(actor)
         return actor
 
-    def add_base_collider(self, radius, position, mesh=None) -> BaseCollider:
-        collider = BaseCollider(radius, position, mesh)
+    def add_base_collider(self, radius, position, name, mesh=None) -> BaseCollider:
+        collider = BaseCollider(radius, position, name, mesh)
         self.base_colliders.append(collider)
         return collider
 
-    def add_complex_collider(self, mesh) -> ComplexCollider:
-        collider = ComplexCollider(mesh)
+    def add_complex_collider(self, mesh, name) -> ComplexCollider:
+        collider = ComplexCollider(mesh, name)
         self.complex_colliders.append(collider)
         return collider
 
@@ -175,34 +202,39 @@ class Mgr:
         return collider
 
     def update(self):
-        for report in self.reportedCollisions:
-            report.actor.collision_report.remove(report)
-            report.collider.collision_report.remove(report)
+        del self.reportedCollisions[:]
+        for actor in self.base_actors:
+            actor.collision_report = None
+        for collider in self.base_colliders:
+            collider.collision_report = None
 
         if len(self.base_actors) == 0 and len(self.complex_actors) == 0:
             return self.reportedCollisions
         if len(self.base_colliders) != 0:
-            for actor in self.base_actors:
-                if actor.mesh is not None:
-                    actor.position = actor.mesh.getPos(base.render)  # type: ignore
-                    actor.sphere.setPos(actor.position)
-                for collider in self.base_colliders:
-                    if collider.mesh is not None:
-                        collider.position = collider.mesh.getPos(base.render)  # type: ignore
-                        collider.sphere.setPos(collider.position)
+            collider: BaseCollider
+            for collider in self.base_colliders:
+                if collider.mesh is not None:
+                    collider.position = collider.mesh.getPos(base.render)  # type: ignore
+                    collider.sphere.setPos(collider.position)
+                actor: BaseActor
+                for actor in self.base_actors:
+                    if actor.mesh is not None:
+                        actor.position = actor.mesh.getPos(base.render)  # type: ignore
+                        actor.sphere.setPos(actor.position)
                     for positionIndex in range(len(actor.position)):
                         if (
-                            actor.position[positionIndex]
-                            - collider.position[positionIndex]
-                        ) ** 2 < (actor.radius + collider.radius) ** 2:
-                            self.reportedCollisions.append(
-                                CollisionReport(
-                                    actor,
-                                    collider,
-                                    actor.position,
-                                    collider.position,
-                                )
+                            getTotalDistance(actor, collider)
+                            <= actor.radius + collider.radius
+                        ):
+                            colReport = CollisionReport(
+                                actor,
+                                collider,
+                                actor.position,
+                                collider.position,
                             )
+                            self.reportedCollisions.append(colReport)
+                            actor.collision_report = colReport
+                            collider.collision_report = colReport
         if len(self.complex_colliders) != 0:
             for actor in self.complex_actors:
                 for collider in self.complex_colliders:
@@ -217,6 +249,18 @@ class Mgr:
                                 intersection_points,
                                 intersection_points,
                             )
+                        )
+                        actor.collision_report = CollisionReport(
+                            actor,
+                            collider,
+                            intersection_points,
+                            intersection_points,
+                        )
+                        collider.collision_report = CollisionReport(
+                            collider,
+                            actor,
+                            intersection_points,
+                            intersection_points,
                         )
 
     def execute(self, frame_rate=60):

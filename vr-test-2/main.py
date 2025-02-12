@@ -164,20 +164,41 @@ class VrApp(BaseVrApp):
         self.setupControls()
         self.setupShaders()
         self.player.setPos(0, -0.2, 3.9)
-        self.hand_left_actor = NodeIntersection.add_base_actor(
-            radius=1, position=self.hand_left.getPos(), mesh=self.hand_left
+
+        self.leftThrottle = self.ship.find("**/leftHandle")
+        self.rightThrottle = self.ship.find("**/rightHandle")
+
+        self.leftThrottleCollider: BaseCollider = NodeIntersection.add_base_collider(
+            radius=0.5,
+            position=self.leftThrottle.getPos(),
+            name="leftThrottle",
+            mesh=self.leftThrottle,
         )
-        self.hand_right_actor = NodeIntersection.add_base_actor(
-            radius=1, position=self.hand_right.getPos(), mesh=self.hand_right
+        self.rightThrottleCollider: BaseCollider = NodeIntersection.add_base_collider(
+            radius=0.5,
+            position=self.rightThrottle.getPos(),
+            name="rightThrottle",
+            mesh=self.rightThrottle,
+        )
+
+        self.hand_left_actor: BaseActor = NodeIntersection.add_base_actor(
+            radius=0.5,
+            position=self.hand_left.getPos(),
+            name="hand_left",
+            mesh=self.hand_left,
+        )
+        self.hand_right_actor: BaseActor = NodeIntersection.add_base_actor(
+            radius=0.5,
+            position=self.hand_right.getPos(),
+            name="hand_right",
+            mesh=self.hand_right,
         )
         self.hand_left_actor.sphere.reparentTo(self.render)
         self.hand_right_actor.sphere.reparentTo(self.render)
 
-        self.collider = NodeIntersection.add_base_collider(
-            radius=2, position=self.player.getPos(), mesh=self.player
-        )
-        self.collider.sphere.reparentTo(self.render)
-        NodeIntersection.start()
+        self.leftThrottleCollider.sphere.reparentTo(self.render)
+        self.rightThrottleCollider.sphere.reparentTo(self.render)
+
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensSize(self, size):
@@ -237,6 +258,7 @@ class VrApp(BaseVrApp):
 
     def update(self, task):
         self.UpdateHeadsetTracking()
+        NodeIntersection.update()
         result = task.cont
         playerMoveSpeed = Wvars.speed / 10
         try:
@@ -281,13 +303,19 @@ class VrApp(BaseVrApp):
             self.player.getZ() + z_movement,
         )
         self.skybox.setPos(self.player.getPos())
+
         if self.planetCam:
             self.planetCam.setPos(self.planetRenderScene, 0, 0, 10)
             self.planetCam.setHpr(self.planetRenderScene, 0, -90, 0)
 
+        if self.leftThrottleCollider.collision_report is not None:
+            self.leftThrottle.setColorScale(0.2, 0.5, 1, 1)
+        else:
+            self.leftThrottle.setColorScale(1, 1, 1, 1)
         return result
 
     def setupControls(self):
+
         self.lastMouseX = 0
         self.lastMouseY = 0
         self.keyMap = {
