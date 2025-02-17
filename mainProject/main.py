@@ -214,6 +214,7 @@ class VrApp(BaseVrApp):
         self.controlBoard = self.ship.find("**/Display")
         self.controlBoard.setColor(0, 0, 0, 1)
         self.controlBoard.setTransparency(TransparencyAttrib.MAlpha)
+
         self.planetRenderScene = NodePath("planetRenderScene")
 
         self.planetRenderLens = OrthographicLens()
@@ -259,13 +260,18 @@ class VrApp(BaseVrApp):
         self.texCard.setY(self.texCard.getY() - (self.texCard.getScale()[2] / 2))
         self.texCard.setZ(self.texCard.getZ() - self.texCard.getScale()[1] / 2)
         self.texCard.setZ(self.texCard.getZ() - 0.1)
-        self.controlBoard.hide()
         self.texCard.setP(-60)
 
         self.texCard.setTexScale(TextureStage.getDefault(), 1, 1 * (4 / 6) - 0.05)
 
         self.texCard.setTransparency(TransparencyAttrib.MAlpha)
         self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
+        self.controlBoardCollider: ComplexCollider = (
+            NodeIntersection.add_complex_collider(
+                name="controlBoard",
+                mesh=self.texCard.node(),
+            )
+        )
 
         self.loadSkybox()
         self.setupControls()
@@ -301,13 +307,13 @@ class VrApp(BaseVrApp):
             radius=0.25,
             position=self.hand_left.getPos(),
             name="hand_left",
-            mesh=self.hand_left,
+            mesh=Sphere(radius=0.25, lat=20, lon=20),
         )
         self.hand_right_actor: BaseActor = NodeIntersection.add_base_actor(
             radius=0.25,
             position=self.hand_right.getPos(),
             name="hand_right",
-            mesh=self.hand_right,
+            mesh=Sphere(radius=0.25, lat=20, lon=20),
         )
         self.hand_left_actor.sphere.reparentTo(self.render)
         self.hand_right_actor.sphere.reparentTo(self.render)

@@ -6,11 +6,13 @@ from .utils import (
     Noise,
     NodeIntersection,
     Sphere,
+    Cube,
     BaseActor,
     BaseCollider,
     ComplexActor,
     ComplexCollider,
     CollisionReport,
+    CubeGenerator,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "ComplexActor",
     "ComplexCollider",
     "CollisionReport",
+    "Cube",
+    "CubeGenerator",
 ]

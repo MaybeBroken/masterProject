@@ -159,7 +159,61 @@ def getTotalDistance(actor, collider):
 
 
 class CubeGenerator:
-    def base(self, position: tuple, radius: float):
+    def raw(self, position: tuple, radius: float, color: tuple) -> GeomNode:
+        return Cube(
+            pointArray=[
+                [
+                    position[0] - radius,
+                    position[1] - radius,
+                    position[2] - radius,
+                    color,
+                ],
+                [
+                    position[0] + radius,
+                    position[1] - radius,
+                    position[2] - radius,
+                    color,
+                ],
+                [
+                    position[0] + radius,
+                    position[1] + radius,
+                    position[2] - radius,
+                    color,
+                ],
+                [
+                    position[0] - radius,
+                    position[1] + radius,
+                    position[2] - radius,
+                    color,
+                ],
+                [
+                    position[0] - radius,
+                    position[1] - radius,
+                    position[2] + radius,
+                    color,
+                ],
+                [
+                    position[0] + radius,
+                    position[1] - radius,
+                    position[2] + radius,
+                    color,
+                ],
+                [
+                    position[0] + radius,
+                    position[1] + radius,
+                    position[2] + radius,
+                    color,
+                ],
+                [
+                    position[0] - radius,
+                    position[1] + radius,
+                    position[2] + radius,
+                    color,
+                ],
+            ]
+        )
+
+    def base(self, position: tuple, radius: float) -> NodePath:
         return create_cube(
             pointArray=[
                 [
@@ -323,31 +377,27 @@ class CubeGenerator:
 
 
 class BaseActor:
-    def __init__(self, radius: float, position: tuple, name: str, mesh=None):
+    def __init__(
+        self, radius: float, position: tuple, name: str, mesh=None, nodePath=None
+    ):
         self.radius: float = radius
         self.position: tuple = position
         self.sphere = create_uv_sphere(radius)
-        self.mesh: NodePath = mesh
+        self.mesh: GeomNode = mesh
+        self.nodePath: NodePath = NodePath("actor")
         self.name: str = name
         self.collision_report: CollisionReport = None
 
 
 class BaseCollider:
-    def __init__(self, radius: float, position: tuple, name: str, mesh=None):
+    def __init__(
+        self, radius: float, position: tuple, name: str, mesh=None, nodePath=None
+    ):
         self.radius: float = radius
         self.position: tuple = position
         self.sphere: NodePath = create_uv_sphere(radius)
-        self.mesh: NodePath = mesh
-        self.name: str = name
-        self.collision_report: CollisionReport = None
-
-
-class BaseCollider_cube:
-    def __init__(self, radius: float, position: tuple, name: str, mesh=None):
-        self.radius: float = radius
-        self.position: tuple = position
-        self.sphere: NodePath = CubeGenerator().base(position, radius)
-        self.mesh: NodePath = mesh
+        self.mesh: GeomNode = mesh
+        self.nodePath: NodePath = NodePath("collider")
         self.name: str = name
         self.collision_report: CollisionReport = None
 
@@ -419,6 +469,8 @@ class Mgr:
     def add_base_actor(self, radius, position, name, mesh=None) -> BaseActor:
         actor = BaseActor(radius, position, name, mesh)
         self.base_actors.append(actor)
+        complexActor = ComplexActor(mesh, name)
+        self.complex_actors.append(complexActor)
         return actor
 
     def add_complex_actor(self, name, mesh) -> ComplexActor:
@@ -438,6 +490,7 @@ class Mgr:
 
     def remove_base_actor(self, actor):
         self.base_actors.remove(actor)
+        self.complex_actors.remove(actor)
         return actor
 
     def remove_complex_actor(self, actor):
@@ -515,7 +568,7 @@ class Mgr:
                 actor: BaseActor
                 for actor in self.base_actors:
                     if actor.mesh is not None:
-                        actor.position = actor.mesh.getPos(base.render)  # type: ignore
+                        actor.position = actor.mesh.getParent().getPos(base.render)  # type: ignore
                         actor.sphere.setPos(actor.position)
                     for positionIndex in range(len(actor.position)):
                         if (
@@ -538,6 +591,7 @@ class Mgr:
                         intersection_points = compute_intersection_points(
                             actor.array, collider.array
                         )
+                        print(intersection_points)
                         self.reportedCollisions.append(
                             CollisionReport(
                                 actor,

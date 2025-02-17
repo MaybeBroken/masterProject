@@ -13,11 +13,13 @@ from .nodeIntersection import (
     panda_mesh_to_numpy,
     Mgr as NodeIntersection,
     Sphere,
+    Cube,
     BaseActor,
     BaseCollider,
     ComplexActor,
     ComplexCollider,
     CollisionReport,
+    CubeGenerator,
 )
 
 # import opensimplex
