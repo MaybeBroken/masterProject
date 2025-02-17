@@ -158,3 +158,4 @@ cython_debug/
 vr-test-2/skybox/box.blend
 *.blend1
 vr-test-2/control1.bam
+mainProject/render_pipeline/

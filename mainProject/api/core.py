@@ -108,18 +108,18 @@ class BaseVrApp(ShowBase):
         ConfigVariableString("", "textures-power-2 0")
         if launchShowBase:
             super().__init__()
-        else:
-            pipeline_path = "api"
-            sys.path.insert(0, pipeline_path)
+        # else:
+        #     pipeline_path = "./render_pipeline"
+        #     sys.path.insert(0, pipeline_path)
 
-            from render_pipeline.rpcore import RenderPipeline, SpotLight
+        #     from render_pipeline import Nonee
 
-            self.render_pipeline = RenderPipeline()
-            self.render_pipeline.create(self)
-            self.render_pipeline.daytime_mgr.time = "7:40"
-            self.render_pipeline.set_effect(
-                self.render, "src/scene-effect.yaml", {}, sort=250
-            )
+        #     self.render_pipeline = RenderPipeline()
+        #     self.render_pipeline.create(self)
+        #     self.render_pipeline.daytime_mgr.time = "7:40"
+        #     self.render_pipeline.set_effect(
+        #         self.render, "src/scene-effect.yaml", {}, sort=250
+        #     )
         _Thread(target=main.start, daemon=True).start()
         self.setBackgroundColor(0, 0, 0)
         self.lensResolution = lensResolution
@@ -972,33 +972,35 @@ class main:
 
     def initialize_audio(self):
         """Initialize audio settings."""
+        try:
+            self.audio = pyaudio.PyAudio()
 
-        self.audio = pyaudio.PyAudio()
+            # Find the VR headset audio device
+            device_index = None
+            for i in range(self.audio.get_device_count()):
+                device_info = self.audio.get_device_info_by_index(i)
+                if "Oculus" in device_info.get("name", ""):
+                    device_index = i
+                    break
 
-        # Find the VR headset audio device
-        device_index = None
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            if "Oculus" in device_info.get("name", ""):
-                device_index = i
-                break
+            if device_index is None:
+                print("VR headset audio device not found.")
+                return
 
-        if device_index is None:
-            print("VR headset audio device not found.")
-            return
+            # Open an audio stream with the VR headset as the output device
+            self.audio_stream = self.audio.open(
+                format=pyaudio.paInt16,
+                channels=2,
+                rate=44100,
+                output=True,
+                output_device_index=device_index,
+            )
 
-        # Open an audio stream with the VR headset as the output device
-        self.audio_stream = self.audio.open(
-            format=pyaudio.paInt16,
-            channels=2,
-            rate=44100,
-            output=True,
-            output_device_index=device_index,
-        )
-
-        print(
-            f"Initialized VR headset audio device: {self.audio.get_device_info_by_index(device_index).get('name')}"
-        )
+            print(
+                f"Initialized VR headset audio device: {self.audio.get_device_info_by_index(device_index).get('name')}"
+            )
+        except Exception as e:
+            print(f"An error occurred while initializing audio: {e}")
 
     def close_audio(self):
         """Close the audio stream and terminate PyAudio."""

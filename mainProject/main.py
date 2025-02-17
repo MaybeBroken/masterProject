@@ -68,7 +68,7 @@ class VrApp(BaseVrApp):
             autoCamRotation=True,
             autoControllerPositioning=True,
             autoControllerRotation=True,
-            launchShowBase=False,
+            launchShowBase=True,
         )
         self.tex = {}
         print("VrApp init")
