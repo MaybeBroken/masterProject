@@ -20,17 +20,19 @@ def do_meshes_intersect(mesh1, mesh2):
     Returns:
     bool: True if the meshes intersect, False otherwise.
     """
+    # Check if there are enough points to create Delaunay triangulations
+    if len(mesh1) < 5 or len(mesh2) < 5:
+        raise ValueError("Not enough points to create Delaunay triangulations")
+
     # Create Delaunay triangulations for both meshes
-    tri1 = Delaunay(mesh1)
-    tri2 = Delaunay(mesh2)
+    tri1 = Delaunay(mesh1, qhull_options='QJ')
+    tri2 = Delaunay(mesh2, qhull_options='QJ')
 
     # Check if any triangle from mesh1 intersects with any triangle from mesh2
     for simplex1 in tri1.simplices:
         for simplex2 in tri2.simplices:
             if do_triangles_intersect(mesh1[simplex1], mesh2[simplex2]):
                 return True
-            else:
-                continue
     return False
 
 
@@ -107,7 +109,10 @@ def line_intersection(p1, p2, q1, q2):
         return None
 
     # Compute the intersection point
-    t = np.dot(q1 - p1, cross) / np.dot(d1, cross)
+    denominator = np.dot(d1, cross)
+    if denominator == 0:
+        return None
+    t = np.dot(q1 - p1, cross) / denominator
 
     if 0 <= t <= 1:
         return p1 + t * d1

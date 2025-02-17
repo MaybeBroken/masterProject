@@ -466,8 +466,10 @@ class Mgr:
         for collider in self.base_colliders:
             collider.sphere.hide()
 
-    def add_base_actor(self, radius, position, name, mesh=None) -> BaseActor:
-        actor = BaseActor(radius, position, name, mesh)
+    def add_base_actor(
+        self, radius, position, name, mesh=None, nodePath=None
+    ) -> BaseActor:
+        actor = BaseActor(radius, position, name, mesh, nodePath)
         self.base_actors.append(actor)
         complexActor = ComplexActor(mesh, name)
         self.complex_actors.append(complexActor)
@@ -478,8 +480,10 @@ class Mgr:
         self.complex_actors.append(actor)
         return actor
 
-    def add_base_collider(self, radius, position, name, mesh=None) -> BaseCollider:
-        collider = BaseCollider(radius, position, name, mesh)
+    def add_base_collider(
+        self, radius, position, name, mesh=None, nodePath=None
+    ) -> BaseCollider:
+        collider = BaseCollider(radius, position, name, mesh, nodePath)
         self.base_colliders.append(collider)
         return collider
 
@@ -562,13 +566,13 @@ class Mgr:
         if len(self.base_colliders) != 0:
             collider: BaseCollider
             for collider in self.base_colliders:
-                if collider.mesh is not None:
-                    collider.position = collider.mesh.getPos(base.render)  # type: ignore
+                if collider.nodePath is not None:
+                    collider.position = collider.nodePath.getPos(base.render)  # type: ignore
                     collider.sphere.setPos(collider.position)
                 actor: BaseActor
                 for actor in self.base_actors:
-                    if actor.mesh is not None:
-                        actor.position = actor.mesh.getParent().getPos(base.render)  # type: ignore
+                    if actor.nodePath is not None:
+                        actor.position = actor.nodePath.getPos(base.render)  # type: ignore
                         actor.sphere.setPos(actor.position)
                     for positionIndex in range(len(actor.position)):
                         if (
