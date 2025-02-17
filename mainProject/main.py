@@ -14,6 +14,7 @@ from panda3d.core import (
     TextureStage,
     OrthographicLens,
     MovieTexture,
+    GeomNode,
 )
 from direct.filter.FilterManager import FilterManager
 from math import sin, cos, pi
