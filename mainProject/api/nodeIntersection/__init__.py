@@ -78,6 +78,56 @@ def Sphere(radius, lat, lon):
 
 
 @staticmethod
+def Cube(pointArray):
+    """
+    Create a cube mesh with the given points in the format:
+    [[x1, y1, z1, (r, g, b, a)], [x2, y2, z2, (r, g, b, a)], ...]
+    """
+    format = GeomVertexFormat.get_v3n3c4t2()
+    vdata = GeomVertexData("vertices", format, Geom.UH_static)
+
+    # Create vertex writer
+    vertex_writer = GeomVertexWriter(vdata, "vertex")
+    normal_writer = GeomVertexWriter(vdata, "normal")
+    color_writer = GeomVertexWriter(vdata, "color")
+    texcoord_writer = GeomVertexWriter(vdata, "texcoord")
+
+    # Generate vertices
+    for i in range(8):
+        x, y, z, rgba = pointArray[i]
+        vertex_writer.add_data3f(x, y, z)
+        normal_writer.add_data3f(x, y, z)
+        color_writer.add_data4f(*rgba)
+        texcoord_writer.add_data2f(i % 2, i // 4)
+
+    # Create triangles
+    tris = [
+        (0, 1, 2),
+        (2, 3, 0),
+        (4, 5, 6),
+        (6, 7, 4),
+        (0, 1, 5),
+        (5, 4, 0),
+        (2, 3, 7),
+        (7, 6, 2),
+        (0, 3, 7),
+        (7, 4, 0),
+        (1, 2, 6),
+        (6, 5, 1),
+    ]
+
+    # Create geom and add triangles
+    geom = Geom(vdata)
+    triangles = GeomTriangles(Geom.UH_static)
+    for tri in tris:
+        triangles.add_vertices(*tri)
+    geom.add_primitive(triangles)
+    node = GeomNode("cube")
+    node.add_geom(geom)
+    return node
+
+
+@staticmethod
 def create_uv_sphere(radius, resolution: tuple = (30, 30)):
     """
     Create a UV sphere mesh with the given radius and position.
@@ -89,11 +139,187 @@ def create_uv_sphere(radius, resolution: tuple = (30, 30)):
 
 
 @staticmethod
+def create_cube(pointArray):
+    """
+    Create a cube mesh with the given points in the format:
+    [[x1, y1, z1, (r, g, b, a)], [x2, y2, z2, (r, g, b, a)], ...]
+    """
+    cube = Cube(pointArray)
+    cubeNode = NodePath("cube")
+    cubeNode.attach_new_node(cube)
+    return cubeNode
+
+
+@staticmethod
 def getTotalDistance(actor, collider):
     """
     Calculate the total distance between two actors or colliders.
     """
     return np.linalg.norm(np.array(actor.position) - np.array(collider.position))
+
+
+class CubeGenerator:
+    def base(self, position: tuple, radius: float):
+        return create_cube(
+            pointArray=[
+                [
+                    position[0] - radius,
+                    position[1] - radius,
+                    position[2] - radius,
+                    (1, 0, 0, 1),
+                ],
+                [
+                    position[0] + radius,
+                    position[1] - radius,
+                    position[2] - radius,
+                    (0, 1, 0, 1),
+                ],
+                [
+                    position[0] + radius,
+                    position[1] + radius,
+                    position[2] - radius,
+                    (0, 0, 1, 1),
+                ],
+                [
+                    position[0] - radius,
+                    position[1] + radius,
+                    position[2] - radius,
+                    (1, 1, 0, 1),
+                ],
+                [
+                    position[0] - radius,
+                    position[1] - radius,
+                    position[2] + radius,
+                    (1, 0.5, 0.5, 1),
+                ],
+                [
+                    position[0] + radius,
+                    position[1] - radius,
+                    position[2] + radius,
+                    (0.5, 1, 0.5, 1),
+                ],
+                [
+                    position[0] + radius,
+                    position[1] + radius,
+                    position[2] + radius,
+                    (0.5, 0.5, 1.5, 1),
+                ],
+                [
+                    position[0] - radius,
+                    position[1] + radius,
+                    position[2] + radius,
+                    (1.5, 1.5, 0.5, 1),
+                ],
+            ]
+        )
+
+    def randomColor(self):
+        return create_cube(
+            pointArray=[
+                [
+                    0,
+                    0,
+                    0,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    1,
+                    0,
+                    0,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    1,
+                    1,
+                    0,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    0,
+                    1,
+                    0,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    0,
+                    0,
+                    -1,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    1,
+                    0,
+                    -1,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    1,
+                    1,
+                    -1,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    0,
+                    1,
+                    -1,
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+            ]
+        )
+
+    def randomShape(self):
+        return create_cube(
+            pointArray=[
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+                [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                    (np.random.rand(), np.random.rand(), np.random.rand(), 1),
+                ],
+            ]
+        )
 
 
 class BaseActor:
@@ -111,6 +337,16 @@ class BaseCollider:
         self.radius: float = radius
         self.position: tuple = position
         self.sphere: NodePath = create_uv_sphere(radius)
+        self.mesh: NodePath = mesh
+        self.name: str = name
+        self.collision_report: CollisionReport = None
+
+
+class BaseCollider_cube:
+    def __init__(self, radius: float, position: tuple, name: str, mesh=None):
+        self.radius: float = radius
+        self.position: tuple = position
+        self.sphere: NodePath = CubeGenerator().base(position, radius)
         self.mesh: NodePath = mesh
         self.name: str = name
         self.collision_report: CollisionReport = None
@@ -234,9 +470,7 @@ class Mgr:
         collider.mesh = mesh
         return collider
 
-    def transformActorType(
-        self, actor: BaseActor
-    ) -> ComplexActor:
+    def transformActorType(self, actor: BaseActor) -> ComplexActor:
         if isinstance(actor, BaseActor):
             new_actor = ComplexActor(actor.mesh, actor.name)
             self.complex_actors.append(new_actor)

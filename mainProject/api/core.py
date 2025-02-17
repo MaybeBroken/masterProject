@@ -112,7 +112,7 @@ class BaseVrApp(ShowBase):
         #     pipeline_path = "./render_pipeline"
         #     sys.path.insert(0, pipeline_path)
 
-        #     from render_pipeline import Nonee
+        #     from render_pipeline import RenderPipeline
 
         #     self.render_pipeline = RenderPipeline()
         #     self.render_pipeline.create(self)
