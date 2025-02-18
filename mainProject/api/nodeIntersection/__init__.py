@@ -384,7 +384,7 @@ class BaseActor:
         self.position: tuple = position
         self.sphere = create_uv_sphere(radius)
         self.mesh: GeomNode = mesh
-        self.nodePath: NodePath = NodePath("actor")
+        self.nodePath: NodePath = nodePath
         self.name: str = name
         self.collision_report: CollisionReport = None
 
@@ -397,7 +397,7 @@ class BaseCollider:
         self.position: tuple = position
         self.sphere: NodePath = create_uv_sphere(radius)
         self.mesh: GeomNode = mesh
-        self.nodePath: NodePath = NodePath("collider")
+        self.nodePath: NodePath = nodePath
         self.name: str = name
         self.collision_report: CollisionReport = None
 
@@ -444,7 +444,8 @@ class CollisionReport:
 
     def __repr__(self):
         return self.__str__()
-
+    
+    def randThingy(): ...
 
 class Mgr:
     def __init__(self):
@@ -471,8 +472,6 @@ class Mgr:
     ) -> BaseActor:
         actor = BaseActor(radius, position, name, mesh, nodePath)
         self.base_actors.append(actor)
-        complexActor = ComplexActor(mesh, name)
-        self.complex_actors.append(complexActor)
         return actor
 
     def add_complex_actor(self, name, mesh) -> ComplexActor:

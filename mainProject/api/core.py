@@ -307,18 +307,13 @@ class BaseVrApp(ShowBase):
                         -self.vrCameraPose.orientation.y,
                     )
                 )
-                # Create a transformation matrix to convert global coordinates into local coordinates
-                hpr = self.vrCam.getHpr()
-                pos = self.vrCam.getPos()
-                transform_matrix = LMatrix4f()
-                transform_matrix.setHpr(hpr)
-                transform_matrix.setPos(pos)
-
-                # Invert the transformation matrix to convert from global to local coordinates
-                transform_matrix.invertInPlace()
-
-                # Apply the transformation matrix to the vrCam
-                self.vrCam.setMat(transform_matrix)
+                vrCamH = self.vrCam.getH()
+                vrCamP = self.vrCam.getP()
+                vrCamR = self.vrCam.getR()
+                self.vrCam.setR(-vrCamR * cos(radians(vrCamH)))
+                self.vrCam.setR(self.vrCam, vrCamP * cos(radians(vrCamH + 90)))
+                self.vrCam.setP(vrCamP * cos(radians(vrCamH)))
+                self.vrCam.setP(self.vrCam, vrCamR * cos(radians(vrCamH + 90)))
             if self.autoControllerPositioning:
                 try:
                     self.hand_left.setPos(

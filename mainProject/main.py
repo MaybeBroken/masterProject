@@ -267,13 +267,11 @@ class VrApp(BaseVrApp):
 
         self.texCard.setTransparency(TransparencyAttrib.MAlpha)
         self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
-        controlBoardCubeNode: GeomNode = CubeGenerator().raw(
-            position=self.texCard.getPos(), radius=2, color=(1, 1, 1, 1)
-        )
-        self.controlBoardCollider: BaseCollider = NodeIntersection.add_base_collider(
-            radius=5,
+
+        self.controlBoardCollider = NodeIntersection.add_base_collider(
+            radius=3,
             position=self.texCard.getPos(),
-            name="controlBoard",
+            name="texCard",
             mesh=None,
             nodePath=self.texCard,
         )
@@ -314,14 +312,14 @@ class VrApp(BaseVrApp):
             radius=0.25,
             position=self.hand_left.getPos(),
             name="hand_left",
-            mesh=Sphere(radius=0.25, lat=20, lon=20),
+            mesh=None,
             nodePath=self.hand_left,
         )
         self.hand_right_actor: BaseActor = NodeIntersection.add_base_actor(
             radius=0.25,
             position=self.hand_right.getPos(),
             name="hand_right",
-            mesh=Sphere(radius=0.25, lat=20, lon=20),
+            mesh=None,
             nodePath=self.hand_right,
         )
         self.hand_left_actor.sphere.reparentTo(self.render)
@@ -329,6 +327,7 @@ class VrApp(BaseVrApp):
 
         self.leftThrottleCollider.sphere.reparentTo(self.render)
         self.rightThrottleCollider.sphere.reparentTo(self.render)
+        # NodeIntersection.hideCollisions()
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensSize(self, size):
@@ -388,6 +387,7 @@ class VrApp(BaseVrApp):
 
     def update(self, task):
         self.UpdateHeadsetTracking()
+        NodeIntersection.update()
         result = task.cont
         playerMoveSpeed = Wvars.speed / 10
         try:
