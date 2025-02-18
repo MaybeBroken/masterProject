@@ -153,7 +153,7 @@ class VrApp(BaseVrApp):
         )
         self.introAnimCard.setTexture(self.cam_left_tex)
         self.introAnimCard.setScale(100, 100, 100)
-        self.introAnimCard.setPos(-50, 100, -50)
+        self.introAnimCard.setPos(-50, 75, -25)
         self.introAnimCard.setHpr(0, 0, 0)
         self.introAnimCard.setTransparency(TransparencyAttrib.MAlpha)
         self.introAnimCard.setColorScale(1, 1, 1, 1)
@@ -250,9 +250,9 @@ class VrApp(BaseVrApp):
             elif geom.getName().startswith("flare"):
                 geom.removeNode()
             elif geom.getName().startswith("sun"):
-                geom.setScale(10)
+                geom.setScale(2)
             elif geom.getName().startswith("planet"):
-                geom.setScale(250)
+                geom.setScale(25)
 
         self.texCard = self.render.attachNewNode(CardMaker("texCard").generate())
         self.texCard.setTexture(self.planetBufferText)
@@ -330,6 +330,11 @@ class VrApp(BaseVrApp):
         self.rightThrottleCollider.sphere.reparentTo(self.render)
         self.controlBoardCollider.sphere.reparentTo(self.render)
         NodeIntersection.hideCollisions()
+        self.UpdateHeadsetTracking()
+        self.handLeftLastPos = self.hand_left.getPos()
+        self.handRightLastPos = self.hand_right.getPos()
+        self.handLeftLastHpr = self.hand_left.getHpr()
+        self.handRightLastHpr = self.hand_right.getHpr()
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensSize(self, size):
@@ -339,10 +344,10 @@ class VrApp(BaseVrApp):
         return self.planetRenderLens.getFilmSize()[0]
 
     def changePlanetLensPos(self, x, y):
-        self.planetRenderLens.setFilmOffset(x, y)
+        self.planetCam.setPos(self.planetRenderScene, x, y, 10)
 
     def getPlanetLensPos(self):
-        return self.planetRenderLens.getFilmOffset()
+        return self.planetCam.getPos(self.planetRenderScene)
 
     def setupShaders(self):
         for win, cam in [
@@ -483,14 +488,62 @@ class VrApp(BaseVrApp):
                 if report.actor.name == "hand_right":
                     handRightActive = True
             if handLeftActive and handRightActive:
+                if (
+                    self.HandState[0].trigger_value > self.HandState[0].haptic_threshold
+                    and not self.HandState[1].trigger_value
+                    > self.HandState[1].haptic_threshold
+                ):
+                    self.changePlanetLensPos(
+                        x=self.getPlanetLensPos()[0]
+                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]) * 0.01,
+                        y=self.getPlanetLensPos()[1]
+                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]) * 0.01,
+                    )
+                if (
+                    self.HandState[1].trigger_value > self.HandState[1].haptic_threshold
+                    and not self.HandState[0].trigger_value
+                    > self.HandState[0].haptic_threshold
+                ):
+                    self.changePlanetLensSize(
+                        self.getPlanetLensSize()
+                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
+                        * 0.01
+                    )
+                if (
+                    self.HandState[0].trigger_value > self.HandState[0].haptic_threshold
+                    and self.HandState[1].trigger_value
+                    > self.HandState[1].haptic_threshold
+                ):
+                    self.changePlanetLensSize(
+                        self.getPlanetLensSize()
+                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
+                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]) * 0.01
+                    )
                 self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
                 self.hand_right_model.setColor(0.2, 0.8, 0.2, 1)
             elif handLeftActive:
                 self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
+                if self.HandState[0].trigger_value > self.HandState[0].haptic_threshold:
+                    self.changePlanetLensPos(
+                        x=self.getPlanetLensPos()[0]
+                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]) * 0.01,
+                        y=self.getPlanetLensPos()[1]
+                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]) * 0.01,
+                    )
             elif handRightActive:
                 self.hand_right_model.setColor(0.2, 0.8, 0.2, 1)
+                if self.HandState[1].trigger_value > self.HandState[1].haptic_threshold:
+                    self.changePlanetLensSize(
+                        self.getPlanetLensSize()
+                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
+                        * 0.01
+                    )
         else:
             self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
+
+        self.handLeftLastPos = self.hand_left.getPos()
+        self.handRightLastPos = self.hand_right.getPos()
+        self.handLeftLastHpr = self.hand_left.getHpr()
 
         return result
 
