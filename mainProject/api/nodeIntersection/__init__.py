@@ -444,8 +444,9 @@ class CollisionReport:
 
     def __repr__(self):
         return self.__str__()
-    
+
     def randThingy(): ...
+
 
 class Mgr:
     def __init__(self):
@@ -585,8 +586,14 @@ class Mgr:
                                 collider.position,
                             )
                             self.reportedCollisions.append(colReport)
-                            actor.collision_report = colReport
-                            collider.collision_report = colReport
+                            if actor.collision_report is None:
+                                actor.collision_report = [colReport]
+                            else:
+                                actor.collision_report += [colReport]
+                            if collider.collision_report is None:
+                                collider.collision_report = [colReport]
+                            else:
+                                collider.collision_report += [colReport]
         if len(self.complex_colliders) != 0:
             for actor in self.complex_actors:
                 for collider in self.complex_colliders:

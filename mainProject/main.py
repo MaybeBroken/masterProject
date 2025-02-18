@@ -17,6 +17,7 @@ from panda3d.core import (
     GeomNode,
 )
 from direct.filter.FilterManager import FilterManager
+from direct.filter.CommonFilters import CommonFilters
 from math import sin, cos, pi
 from screeninfo import get_monitors
 import os
@@ -268,14 +269,6 @@ class VrApp(BaseVrApp):
         self.texCard.setTransparency(TransparencyAttrib.MAlpha)
         self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
 
-        self.controlBoardCollider = NodeIntersection.add_base_collider(
-            radius=3,
-            position=self.texCard.getPos(),
-            name="texCard",
-            mesh=None,
-            nodePath=self.texCard,
-        )
-
         self.loadSkybox()
         self.setupControls()
         self.setupShaders()
@@ -293,30 +286,38 @@ class VrApp(BaseVrApp):
         self.baseRightThrottlePos = self.rightThrottle.getPos()
         self.baseRightThrottleHpr = self.rightThrottle.getHpr()
 
+        self.controlBoardCollider: BaseCollider = NodeIntersection.add_base_collider(
+            radius=2.5,
+            position=self.controlBoard.getPos(self.render),
+            name="texCard",
+            mesh=None,
+            nodePath=self.controlBoard,
+        )
+
         self.leftThrottleCollider: BaseCollider = NodeIntersection.add_base_collider(
             radius=1.75,
-            position=self.leftThrottle.getPos(),
+            position=self.leftThrottle.getPos(self.render),
             name="leftThrottle",
             mesh=None,
             nodePath=self.leftThrottle,
         )
         self.rightThrottleCollider: BaseCollider = NodeIntersection.add_base_collider(
             radius=1.75,
-            position=self.rightThrottle.getPos(),
+            position=self.rightThrottle.getPos(self.render),
             name="rightThrottle",
             mesh=None,
             nodePath=self.rightThrottle,
         )
 
         self.hand_left_actor: BaseActor = NodeIntersection.add_base_actor(
-            radius=0.25,
+            radius=0.35,
             position=self.hand_left.getPos(),
             name="hand_left",
             mesh=None,
             nodePath=self.hand_left,
         )
         self.hand_right_actor: BaseActor = NodeIntersection.add_base_actor(
-            radius=0.25,
+            radius=0.35,
             position=self.hand_right.getPos(),
             name="hand_right",
             mesh=None,
@@ -327,7 +328,8 @@ class VrApp(BaseVrApp):
 
         self.leftThrottleCollider.sphere.reparentTo(self.render)
         self.rightThrottleCollider.sphere.reparentTo(self.render)
-        # NodeIntersection.hideCollisions()
+        self.controlBoardCollider.sphere.reparentTo(self.render)
+        NodeIntersection.hideCollisions()
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensSize(self, size):
@@ -349,29 +351,32 @@ class VrApp(BaseVrApp):
             [self.buffer_right, self.cam_right],
         ]:
             try:
-                threshold = Vec4(0.88, 0.9, 0.85, 0.4)
-                manager = FilterManager(win, cam)
-                tex1 = Texture()
-                tex2 = Texture()
-                tex3 = Texture()
-                tex1.setCompression(Texture.CMOff)  # Disable compression
-                tex2.setCompression(Texture.CMOff)  # Disable compression
-                tex3.setCompression(Texture.CMOff)  # Disable compression
-                finalquad = manager.renderSceneInto(colortex=tex1)
-                interquad = manager.renderQuadInto(colortex=tex2)
-                interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
-                interquad.setShaderInput("tex1", tex1)
-                interquad.setShaderInput("threshold", threshold)
-                interquad2 = manager.renderQuadInto(colortex=tex3)
-                interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
-                interquad2.setShaderInput("tex2", tex2)
-                finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
-                finalquad.setShaderInput("tex1", tex1)
-                finalquad.setShaderInput("tex2", tex2)
-                finalquad.setShaderInput("tex3", tex3)
-                # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
-                # finalquad.setShaderInput("lf_settings", lf_settings)
-                # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
+                filters = CommonFilters(win, cam)
+                filters.setBloom()
+                filters.setAmbientOcclusion()
+                # threshold = Vec4(0.88, 0.9, 0.85, 0.4)
+                # manager = FilterManager(win, cam)
+                # tex1 = Texture()
+                # tex2 = Texture()
+                # tex3 = Texture()
+                # tex1.setCompression(Texture.CMOff)  # Disable compression
+                # tex2.setCompression(Texture.CMOff)  # Disable compression
+                # tex3.setCompression(Texture.CMOff)  # Disable compression
+                # finalquad = manager.renderSceneInto(colortex=tex1)
+                # interquad = manager.renderQuadInto(colortex=tex2)
+                # interquad.setShader(Shader.load("shaders/invert_threshold_r_blur.sha"))
+                # interquad.setShaderInput("tex1", tex1)
+                # interquad.setShaderInput("threshold", threshold)
+                # interquad2 = manager.renderQuadInto(colortex=tex3)
+                # interquad2.setShader(Shader.load("shaders/gaussian_blur.sha"))
+                # interquad2.setShaderInput("tex2", tex2)
+                # finalquad.setShader(Shader.load("shaders/lens_flare.sha"))
+                # finalquad.setShaderInput("tex1", tex1)
+                # finalquad.setShaderInput("tex2", tex2)
+                # finalquad.setShaderInput("tex3", tex3)
+                # # lf_settings = Vec3(lf_samples, lf_halo_width, lf_flare_dispersal)
+                # # finalquad.setShaderInput("lf_settings", lf_settings)
+                # # finalquad.setShaderInput("lf_chroma_distort", lf_chroma_distort)
             except Exception as e:
                 print("Shader error: ", e)
 
@@ -466,6 +471,27 @@ class VrApp(BaseVrApp):
                     self.rightThrottle.setHpr(self.baseRightThrottleHpr)
         else:
             self.rightThrottle.setColorScale(1, 1, 1, 1)
+
+        if self.controlBoardCollider.collision_report is not None:
+            self.texCard.setColorScale(0.2, 0.4, 1.7, 0.8)
+            report: CollisionReport
+            handLeftActive = False
+            handRightActive = False
+            for report in self.controlBoardCollider.collision_report:
+                if report.actor.name == "hand_left":
+                    handLeftActive = True
+                if report.actor.name == "hand_right":
+                    handRightActive = True
+            if handLeftActive and handRightActive:
+                self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
+                self.hand_right_model.setColor(0.2, 0.8, 0.2, 1)
+            elif handLeftActive:
+                self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
+            elif handRightActive:
+                self.hand_right_model.setColor(0.2, 0.8, 0.2, 1)
+        else:
+            self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
+
         return result
 
     def setupControls(self):
