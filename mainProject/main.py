@@ -270,11 +270,12 @@ class VrApp(BaseVrApp):
         controlBoardCubeNode: GeomNode = CubeGenerator().raw(
             position=self.texCard.getPos(), radius=2, color=(1, 1, 1, 1)
         )
-        self.controlBoardCollider: ComplexCollider = (
-            NodeIntersection.add_complex_collider(
-                name="controlBoard",
-                mesh=controlBoardCubeNode,
-            )
+        self.controlBoardCollider: BaseCollider = NodeIntersection.add_base_collider(
+            radius=5,
+            position=self.texCard.getPos(),
+            name="controlBoard",
+            mesh=None,
+            nodePath=self.texCard,
         )
 
         self.loadSkybox()
@@ -328,9 +329,6 @@ class VrApp(BaseVrApp):
 
         self.leftThrottleCollider.sphere.reparentTo(self.render)
         self.rightThrottleCollider.sphere.reparentTo(self.render)
-
-        NodeIntersection.hideCollisions()
-        # NodeIntersection.start()
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensSize(self, size):

@@ -3,11 +3,14 @@
 
 import sys
 
-if not sys.platform == "win32":
-    exit("This API is only supported on Windows.")
-
-from OpenGL import GL
-import xr
+if sys.platform == "win32":
+    from OpenGL import GL
+    import xr
+else:
+    print("VR modules failed to load.")
+    if "a" == "b":
+        from OpenGL import GL
+        import xr
 import numpy as np
 import cv2
 from threading import Thread as _Thread
@@ -34,7 +37,13 @@ import os
 from ctypes import pointer, Structure, c_float, POINTER, cast, byref
 import enum
 from .utils import *
-import pyaudio
+
+if sys.platform == "win32":
+    import pyaudio
+else:
+    print("Audio not yet supported on this platform.")
+    if "a" == "b":
+        import pyaudio  # type: ignore
 
 
 class Side(enum.IntEnum):
@@ -120,7 +129,10 @@ class BaseVrApp(ShowBase):
         #     self.render_pipeline.set_effect(
         #         self.render, "src/scene-effect.yaml", {}, sort=250
         #     )
-        _Thread(target=main.start, daemon=True).start()
+        if sys.platform == "win32":
+            _Thread(target=main.start, daemon=True).start()
+        else:
+            print("VR not yet supported on this platform.")
         self.setBackgroundColor(0, 0, 0)
         self.lensResolution = lensResolution
         self.wantDevMode = wantDevMode
@@ -295,13 +307,18 @@ class BaseVrApp(ShowBase):
                         -self.vrCameraPose.orientation.y,
                     )
                 )
-                vrCamH = self.vrCam.getH()
-                vrCamP = self.vrCam.getP()
-                vrCamR = self.vrCam.getR()
-                self.vrCam.setR(-vrCamR * cos(radians(vrCamH)))
-                self.vrCam.setR(self.vrCam, vrCamP * cos(radians(vrCamH + 90)))
-                self.vrCam.setP(vrCamP * cos(radians(vrCamH)))
-                self.vrCam.setP(self.vrCam, vrCamR * cos(radians(vrCamH + 90)))
+                # Create a transformation matrix to convert global coordinates into local coordinates
+                hpr = self.vrCam.getHpr()
+                pos = self.vrCam.getPos()
+                transform_matrix = LMatrix4f()
+                transform_matrix.setHpr(hpr)
+                transform_matrix.setPos(pos)
+
+                # Invert the transformation matrix to convert from global to local coordinates
+                transform_matrix.invertInPlace()
+
+                # Apply the transformation matrix to the vrCam
+                self.vrCam.setMat(transform_matrix)
             if self.autoControllerPositioning:
                 try:
                     self.hand_left.setPos(
