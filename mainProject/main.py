@@ -5,16 +5,15 @@ from panda3d.core import (
     AmbientLight,
     DirectionalLight,
     Texture,
-    Shader,
+    # Shader,
     Vec4,
     TransparencyAttrib,
     CardMaker,
     NodePath,
     GraphicsOutput,
     TextureStage,
-    OrthographicLens,
+    PerspectiveLens,
     MovieTexture,
-    GeomNode,
 )
 from direct.filter.FilterManager import FilterManager
 from direct.filter.CommonFilters import CommonFilters
@@ -219,7 +218,8 @@ class VrApp(BaseVrApp):
 
         self.planetRenderScene = NodePath("planetRenderScene")
 
-        self.planetRenderLens = OrthographicLens()
+        self.planetRenderLens = PerspectiveLens()
+        self.planetRenderLens.setFov(95.5)
         self.planetBuffer = self.make_buffer((900, 900))
         self.planetBuffer.setClearColorActive(True)
         self.planetBuffer.setClearColor((0, 0, 0, 0))
@@ -335,16 +335,11 @@ class VrApp(BaseVrApp):
         self.handRightLastPos = self.hand_right.getPos()
         self.handLeftLastHpr = self.hand_left.getHpr()
         self.handRightLastHpr = self.hand_right.getHpr()
+        self.planetCamPos = (0, 0, 10)
         self.taskMgr.add(self.update, "update")
 
-    def changePlanetLensSize(self, size):
-        self.planetRenderLens.setFilmSize(size, size)
-
-    def getPlanetLensSize(self):
-        return self.planetRenderLens.getFilmSize()[0]
-
-    def changePlanetLensPos(self, x, y):
-        self.planetCam.setPos(self.planetRenderScene, x, y, 10)
+    def changePlanetLensPos(self, x, y, z):
+        self.planetCamPos = (x / 100, y / 100, z / 100)
 
     def getPlanetLensPos(self):
         return self.planetCam.getPos(self.planetRenderScene)
@@ -494,49 +489,59 @@ class VrApp(BaseVrApp):
                     > self.HandState[1].haptic_threshold
                 ):
                     self.changePlanetLensPos(
-                        x=self.getPlanetLensPos()[0]
-                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]) * 0.01,
-                        y=self.getPlanetLensPos()[1]
-                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]) * 0.01,
+                        x=self.planetCamPos[0]
+                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
+                        y=self.planetCamPos[1]
+                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
+                        z=self.planetCamPos[2],
                     )
                 if (
                     self.HandState[1].trigger_value > self.HandState[1].haptic_threshold
                     and not self.HandState[0].trigger_value
                     > self.HandState[0].haptic_threshold
                 ):
-                    self.changePlanetLensSize(
-                        self.getPlanetLensSize()
-                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
-                        * 0.01
+                    self.changePlanetLensPos(
+                        x=self.planetCamPos[0]
+                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
+                        y=self.planetCamPos[1]
+                        + (self.handRightLastPos[1] - self.hand_right.getPos()[1]),
+                        z=self.planetCamPos[2],
                     )
+
                 if (
                     self.HandState[0].trigger_value > self.HandState[0].haptic_threshold
                     and self.HandState[1].trigger_value
                     > self.HandState[1].haptic_threshold
                 ):
-                    self.changePlanetLensSize(
-                        self.getPlanetLensSize()
-                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
-                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]) * 0.01
+                    self.changePlanetLensPos(
+                        x=self.planetCamPos[0],
+                        y=self.planetCamPos[1],
+                        z=self.planetCamPos[2]
+                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0])
+                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
                     )
+
                 self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
                 self.hand_right_model.setColor(0.2, 0.8, 0.2, 1)
             elif handLeftActive:
                 self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
                 if self.HandState[0].trigger_value > self.HandState[0].haptic_threshold:
                     self.changePlanetLensPos(
-                        x=self.getPlanetLensPos()[0]
-                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]) * 0.01,
-                        y=self.getPlanetLensPos()[1]
-                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]) * 0.01,
+                        x=self.planetCamPos[0]
+                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
+                        y=self.planetCamPos[1]
+                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
+                        z=self.planetCamPos[2],
                     )
             elif handRightActive:
                 self.hand_right_model.setColor(0.2, 0.8, 0.2, 1)
                 if self.HandState[1].trigger_value > self.HandState[1].haptic_threshold:
-                    self.changePlanetLensSize(
-                        self.getPlanetLensSize()
-                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
-                        * 0.01
+                    self.changePlanetLensPos(
+                        x=self.planetCamPos[0]
+                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
+                        y=self.planetCamPos[1]
+                        + (self.handRightLastPos[1] - self.hand_right.getPos()[1]),
+                        z=self.planetCamPos[2],
                     )
         else:
             self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
@@ -544,6 +549,8 @@ class VrApp(BaseVrApp):
         self.handLeftLastPos = self.hand_left.getPos()
         self.handRightLastPos = self.hand_right.getPos()
         self.handLeftLastHpr = self.hand_left.getHpr()
+
+        self.planetCam.setPos(self.planetRenderScene, self.planetCamPos)
 
         return result
 
