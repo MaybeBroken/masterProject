@@ -10,11 +10,7 @@ from panda3d.core import (
     loadPrcFileData,
     MovieTexture,
     CardMaker,
-    Texture,
-    AmbientLight,
-    DirectionalLight,
     TransparencyAttrib,
-    Vec4,
     TextNode,
 )
 from direct.interval.IntervalGlobal import *
