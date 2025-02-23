@@ -40,7 +40,7 @@ monitor = get_monitors()
 loadPrcFileData(
     "",
     f"""want-pstats 0
-win-size 800 800
+win-size 1920 1080
 fullscreen 0
 undecorated 0
 show-frame-rate-meter 1
@@ -49,7 +49,7 @@ frame-rate-meter-update-interval 0.1
 clock-mode normal
 sync-video 0
 clock-frame-rate 0
-window-title Vr-Test-2
+window-title Master Project - 2025
 """,
 )
 
@@ -216,27 +216,8 @@ class VrApp(BaseVrApp):
         self.controlBoard.setColor(0, 0, 0, 1)
         self.controlBoard.setTransparency(TransparencyAttrib.MAlpha)
 
-        self.planetRenderScene = NodePath("planetRenderScene")
-
-        self.planetRenderLens = PerspectiveLens()
-        self.planetRenderLens.setFov(95.5)
-        self.planetBuffer = self.make_buffer((900, 900))
-        self.planetBuffer.setClearColorActive(True)
-        self.planetBuffer.setClearColor((0, 0, 0, 0))
-        self.planetCam = self.makeCamera(
-            self.planetBuffer, scene=self.planetRenderScene, lens=self.planetRenderLens
-        )
-        self.planetBufferText = Texture()
-        self.planetBufferText.setFormat(Texture.F_rgba)
-        self.planetBufferText.setKeepRamImage(True)
-        self.planetBuffer.addRenderTexture(
-            self.planetBufferText, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPColor
-        )
-        self.planetBufferText.setWrapU(Texture.WMClamp)
-        self.planetBufferText.setWrapV(Texture.WMClamp)
-
         self.solarSystem = self.loader.load_model("models/Systems/strangeSystem.bam")
-        self.solarSystemNode = self.solarSystem.instanceTo(self.planetRenderScene)
+        self.solarSystemNode = self.solarSystem.instanceTo(self.render)
         self.solarSystemNode.setPos(0, 0, 0)
         self.solarSystem.setScale(0.001)
         for geom in self.solarSystem.findAllMatches("**/+GeomNode"):
@@ -253,21 +234,6 @@ class VrApp(BaseVrApp):
                 geom.setScale(2)
             elif geom.getName().startswith("planet"):
                 geom.setScale(25)
-
-        self.texCard = self.render.attachNewNode(CardMaker("texCard").generate())
-        self.texCard.setTexture(self.planetBufferText)
-        self.texCard.setPos(self.controlBoard.getPos(self.render))
-        self.texCard.setScale(6, 1, 4)
-        self.texCard.setX(self.texCard.getX() - self.texCard.getScale()[0] / 2)
-        self.texCard.setY(self.texCard.getY() - (self.texCard.getScale()[2] / 2))
-        self.texCard.setZ(self.texCard.getZ() - self.texCard.getScale()[1] / 2)
-        self.texCard.setZ(self.texCard.getZ() - 0.1)
-        self.texCard.setP(-60)
-
-        self.texCard.setTexScale(TextureStage.getDefault(), 1, 1 * (4 / 6) - 0.05)
-
-        self.texCard.setTransparency(TransparencyAttrib.MAlpha)
-        self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
 
         self.loadSkybox()
         self.setupControls()
@@ -336,13 +302,20 @@ class VrApp(BaseVrApp):
         self.handLeftLastHpr = self.hand_left.getHpr()
         self.handRightLastHpr = self.hand_right.getHpr()
         self.planetCamPos = (0, 0, 10)
+        self.changePlanetLensPos(
+            x=self.planetCamPos[0]
+            - (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
+            y=self.planetCamPos[1]
+            - (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
+            z=self.planetCamPos[2],
+        )
         self.taskMgr.add(self.update, "update")
 
     def changePlanetLensPos(self, x, y, z):
-        self.planetCamPos = (x / 100, y / 100, z / 100)
+        self.planetCamPos = (x, y, z)
 
     def getPlanetLensPos(self):
-        return self.planetCam.getPos(self.planetRenderScene)
+        return self.solarSystemNode.getPos(self.planetRenderScene)
 
     def setupShaders(self):
         for win, cam in [
@@ -438,10 +411,6 @@ class VrApp(BaseVrApp):
         )
         self.skybox.setPos(self.player.getPos())
 
-        if self.planetCam:
-            self.planetCam.setPos(self.planetRenderScene, 0, 0, 10)
-            self.planetCam.setHpr(self.planetRenderScene, 0, -90, 0)
-
         if self.leftThrottleCollider.collision_report is not None:
             self.leftThrottle.setColorScale(1.5, 1.5, 1.5, 1)
             if self.HandState[0].trigger_value > self.HandState[0].haptic_threshold:
@@ -473,7 +442,7 @@ class VrApp(BaseVrApp):
             self.rightThrottle.setColorScale(1, 1, 1, 1)
 
         if self.controlBoardCollider.collision_report is not None:
-            self.texCard.setColorScale(0.2, 0.4, 1.7, 0.8)
+            # self.texCard.setColorScale(0.2, 0.4, 1.7, 0.8)
             report: CollisionReport
             handLeftActive = False
             handRightActive = False
@@ -490,9 +459,9 @@ class VrApp(BaseVrApp):
                 ):
                     self.changePlanetLensPos(
                         x=self.planetCamPos[0]
-                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
+                        - (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
                         y=self.planetCamPos[1]
-                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
+                        - (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
                         z=self.planetCamPos[2],
                     )
                 if (
@@ -502,9 +471,9 @@ class VrApp(BaseVrApp):
                 ):
                     self.changePlanetLensPos(
                         x=self.planetCamPos[0]
-                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
+                        - (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
                         y=self.planetCamPos[1]
-                        + (self.handRightLastPos[1] - self.hand_right.getPos()[1]),
+                        - (self.handRightLastPos[1] - self.hand_right.getPos()[1]),
                         z=self.planetCamPos[2],
                     )
 
@@ -517,8 +486,10 @@ class VrApp(BaseVrApp):
                         x=self.planetCamPos[0],
                         y=self.planetCamPos[1],
                         z=self.planetCamPos[2]
-                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0])
-                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
+                        - (
+                            (self.handLeftLastPos[0] - self.hand_left.getPos()[0])
+                            + (self.handRightLastPos[0] - self.hand_right.getPos()[0])
+                        ),
                     )
 
                 self.hand_left_model.setColor(0.2, 0.8, 0.2, 1)
@@ -528,9 +499,9 @@ class VrApp(BaseVrApp):
                 if self.HandState[0].trigger_value > self.HandState[0].haptic_threshold:
                     self.changePlanetLensPos(
                         x=self.planetCamPos[0]
-                        + (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
+                        - (self.handLeftLastPos[0] - self.hand_left.getPos()[0]),
                         y=self.planetCamPos[1]
-                        + (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
+                        - (self.handLeftLastPos[1] - self.hand_left.getPos()[1]),
                         z=self.planetCamPos[2],
                     )
             elif handRightActive:
@@ -538,19 +509,20 @@ class VrApp(BaseVrApp):
                 if self.HandState[1].trigger_value > self.HandState[1].haptic_threshold:
                     self.changePlanetLensPos(
                         x=self.planetCamPos[0]
-                        + (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
+                        - (self.handRightLastPos[0] - self.hand_right.getPos()[0]),
                         y=self.planetCamPos[1]
-                        + (self.handRightLastPos[1] - self.hand_right.getPos()[1]),
+                        - (self.handRightLastPos[1] - self.hand_right.getPos()[1]),
                         z=self.planetCamPos[2],
                     )
         else:
-            self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
+            # self.texCard.setColorScale(0, 0.2, 1.5, 0.7)
+            ...
 
         self.handLeftLastPos = self.hand_left.getPos()
         self.handRightLastPos = self.hand_right.getPos()
         self.handLeftLastHpr = self.hand_left.getHpr()
 
-        self.planetCam.setPos(self.planetRenderScene, self.planetCamPos)
+        self.solarSystemNode.setPos(self.planetCamPos)
 
         return result
 
@@ -590,6 +562,7 @@ class VrApp(BaseVrApp):
             "control-wheel_down",
             lambda: setattr(Wvars, "speed", Wvars.speed - 1),
         )
+        self.accept("q", self.userExit)
 
     def updateKeyMap(self, key, value):
         self.keyMap[key] = value

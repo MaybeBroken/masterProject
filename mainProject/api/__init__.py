@@ -1,4 +1,4 @@
-from .core import BaseVrApp, main as VrApi, xr
+from .core import BaseVrApp, main as VrApi, xr, WANT_VR_INIT
 from .utils import (
     Math,
     File,
@@ -32,4 +32,8 @@ __all__ = [
     "CollisionReport",
     "Cube",
     "CubeGenerator",
+    "WANT_VR_INIT",
 ]
+
+if __name__ == "__main__":
+    print("Panda3d VR Interface -- Version {VrApiVersion}")
