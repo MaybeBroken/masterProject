@@ -51,7 +51,7 @@ class Launcher(BaseVrApp):
         )
         self.tex = {}
         keyboard.add_word_listener(
-            word="enterprise",
+            word="exit-program",
             callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
             triggers=["enter"],
             timeout=5,
@@ -113,32 +113,36 @@ class Launcher(BaseVrApp):
         self.creditsText.setAlign(TextNode.ALeft)
 
         self.VrTutorialButton = DirectButton(
-            text="VR Tutorial",
-            scale=0.15,
+            scale=(0.15 * (6000 / 3375), 0.15, 0.15),
             pos=(0, 0, 0.5),
             command=self.launchVRTutorial,
             frameColor=(0.5, 0.5, 0.5, 0),
             relief=DGG.FLAT,
             text_fg=(0, 0, 0, 1),
+            image="textures/vrTutorial.png",
         )
         self.ProgramTutorialButton = DirectButton(
-            text="Program Tutorial",
-            scale=0.15,
+            scale=(0.15 * (6000 / 3375), 0.15, 0.15),
             pos=(0, 0, 0),
             command=self.launchProgramTutorial,
             frameColor=(0.5, 0.5, 0.5, 0),
             relief=DGG.FLAT,
             text_fg=(0, 0, 0, 1),
+            image="textures/programTutorial.png",
         )
         self.mainProgramButton = DirectButton(
-            text="Main Program",
-            scale=0.15,
+            scale=(0.15 * (6000 / 3375), 0.15, 0.15),
             pos=(0, 0, -0.5),
             command=self.launchMainProgram,
             frameColor=(0.5, 0.5, 0.5, 0),
             relief=DGG.FLAT,
             text_fg=(0, 0, 0, 1),
+            image="textures/mainProgram.png",
         )
+
+        self.VrTutorialButton.setTransparency(TransparencyAttrib.MAlpha)
+        self.ProgramTutorialButton.setTransparency(TransparencyAttrib.MAlpha)
+        self.mainProgramButton.setTransparency(TransparencyAttrib.MAlpha)
 
     def launchMainProgram(self):
         subprocess.Popen(
