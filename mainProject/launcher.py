@@ -57,9 +57,9 @@ class Launcher(BaseVrApp):
         )
         self.tex = {}
         keyboard.add_word_listener(
-            word="exit-4097",
+            word="enterprise",
             callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
-            triggers=["return", "enter"],
+            triggers=["enter"],
             timeout=5,
         )
         self.launch()
@@ -123,18 +123,27 @@ class Launcher(BaseVrApp):
             scale=0.15,
             pos=(0, 0, 0.5),
             command=self.launchVRTutorial,
+            frameColor=(0.5, 0.5, 0.5, 0),
+            relief=DGG.FLAT,
+            text_fg=(0, 0, 0, 1),
         )
         self.ProgramTutorialButton = DirectButton(
             text="Program Tutorial",
             scale=0.15,
             pos=(0, 0, 0),
             command=self.launchProgramTutorial,
+            frameColor=(0.5, 0.5, 0.5, 0),
+            relief=DGG.FLAT,
+            text_fg=(0, 0, 0, 1),
         )
         self.mainProgramButton = DirectButton(
             text="Main Program",
             scale=0.15,
             pos=(0, 0, -0.5),
             command=self.launchMainProgram,
+            frameColor=(0.5, 0.5, 0.5, 0),
+            relief=DGG.FLAT,
+            text_fg=(0, 0, 0, 1),
         )
 
     def launchMainProgram(self):

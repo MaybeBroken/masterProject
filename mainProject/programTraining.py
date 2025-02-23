@@ -59,9 +59,9 @@ class Launcher(BaseVrApp):
         )
         self.tex = {}
         keyboard.add_word_listener(
-            word="exit-4097",
+            word="exit",
             callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
-            triggers=["return", "enter"],
+            triggers=["enter"],
             timeout=5,
         )
         self.launch()
