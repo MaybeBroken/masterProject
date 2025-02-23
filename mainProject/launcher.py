@@ -31,9 +31,7 @@ loadPrcFileData(
 win-size 1920 1080
 fullscreen 0
 undecorated 0
-show-frame-rate-meter 1
-frame-rate-meter-scale 0.035
-frame-rate-meter-update-interval 0.1
+show-frame-rate-meter 0
 clock-mode normal
 sync-video 0
 clock-frame-rate 0

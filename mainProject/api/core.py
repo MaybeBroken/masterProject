@@ -54,28 +54,29 @@ class InputState(Structure):
     def __init__(self):
         super().__init__()
         self.hand_scale[:] = [1, 1]
-
-    _fields_ = [
-        ("action_set", xr.ActionSet),
-        ("grab_action", xr.Action),
-        ("pose_action", xr.Action),
-        ("vibrate_action", xr.Action),
-        ("quit_action", xr.Action),
-        ("hand_subaction_path", xr.Path * len(Side)),
-        ("hand_space", xr.Space * len(Side)),
-        ("hand_scale", c_float * len(Side)),
-        ("hand_active", xr.Bool32 * len(Side)),
-    ]
-    action_set = None
-    grab_action = None
-    pose_action = None
-    vibrate_action = None
-    quit_action = None
-    hand_subaction_path = None
-    hand_space = None
-    hand_scale = None
-    hand_active = None
-    hand_triggers: dict = None
+    
+    if sys.platform == "win32":
+        _fields_ = [
+            ("action_set", xr.ActionSet),
+            ("grab_action", xr.Action),
+            ("pose_action", xr.Action),
+            ("vibrate_action", xr.Action),
+            ("quit_action", xr.Action),
+            ("hand_subaction_path", xr.Path * len(Side)),
+            ("hand_space", xr.Space * len(Side)),
+            ("hand_scale", c_float * len(Side)),
+            ("hand_active", xr.Bool32 * len(Side)),
+        ]
+        action_set = None
+        grab_action = None
+        pose_action = None
+        vibrate_action = None
+        quit_action = None
+        hand_subaction_path = None
+        hand_space = None
+        hand_scale = None
+        hand_active = None
+        hand_triggers: dict = None
 
 
 class Hand:
