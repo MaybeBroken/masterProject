@@ -14,7 +14,6 @@ from panda3d.core import (
     TextNode,
 )
 from direct.interval.IntervalGlobal import *
-from time import sleep
 
 MAIN_SCRIPT_PATH = os.path.abspath(os.path.join(".", "main.py"))
 VR_TUTORIAL_SCRIPT_PATH = os.path.abspath(os.path.join(".", "vrTraining.py"))
