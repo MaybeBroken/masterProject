@@ -21,12 +21,10 @@ from direct.interval.IntervalGlobal import *
 from time import sleep
 
 MAIN_SCRIPT_PATH = os.path.abspath(os.path.join(".", "main.py"))
-VR_TUTORIAL_SCRIPT_PATH = os.path.abspath(
-    os.path.join(".", "Training", "vrTraining.py")
-)
-PROGRAM_TUTORIAL_SCRIPT_PATH = os.path.abspath(
-    os.path.join(".", "Training", "programTraining.py")
-)
+VR_TUTORIAL_SCRIPT_PATH = os.path.abspath(os.path.join(".", "vrTraining.py"))
+PROGRAM_TUTORIAL_SCRIPT_PATH = os.path.abspath(os.path.join(".", "programTraining.py"))
+SELF_PATH = os.path.abspath(__file__)
+
 loadPrcFileData(
     "",
     f"""want-pstats 0
@@ -58,8 +56,13 @@ class Launcher(BaseVrApp):
             wantVr=False,
         )
         self.tex = {}
-        self.accept("q", sys.exit)
-        self.intro()
+        keyboard.add_word_listener(
+            word="exit-4097",
+            callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
+            triggers=["return", "enter"],
+            timeout=5,
+        )
+        self.launch()
 
     def startPlayer(self, media_file, name):
         times = 0
@@ -101,85 +104,6 @@ class Launcher(BaseVrApp):
         except:
             return 0
 
-    def intro(self):
-        # plays the intro animation of the simulator
-        self.cam_left_tex.setCompression(Texture.CMOff)  # Disable compression
-        self.cam_right_tex.setCompression(Texture.CMOff)  # Disable compression
-        self.buffer_left.setClearColorActive(True)
-        self.buffer_left.setClearColor((0, 0, 0, 0))
-        self.buffer_right.setClearColorActive(True)
-        self.buffer_right.setClearColor((0, 0, 0, 0))
-
-        self.render.setShaderAuto()
-        self.sceneAmbientLight = AmbientLight("sceneAmbientLight")
-        self.sceneAmbientLight.setColor((0.5, 0.5, 0.5, 1))
-        self.sceneAmbientLightNodePath = self.render.attachNewNode(
-            self.sceneAmbientLight
-        )
-        self.render.setLight(self.sceneAmbientLightNodePath)
-        self.sceneDirectionalLight = DirectionalLight("sceneDirectionalLight")
-        self.sceneDirectionalLight.setDirection((-1, -1, -1))
-        self.sceneDirectionalLight.setColor((0.8, 0.8, 0.8, 1))
-        self.sceneDirectionalLightNodePath = self.render.attachNewNode(
-            self.sceneDirectionalLight
-        )
-        self.sceneDirectionalLight.setShadowCaster(True, 1024, 1024)
-        self.render.setLight(self.sceneDirectionalLightNodePath)
-
-        self.blackoutModel = self.loader.load_model("models/box")
-        self.blackoutModel.setScale(1000)
-        self.blackoutModel.setPos(-500, -500, -500)
-        self.blackoutModel.reparentTo(self.render)
-        self.blackoutModel.setBin("background", 0)
-        self.blackoutModel.setColor(0, 0, 0, 1)
-
-        self.introAnimCard = self.render.attachNewNode(
-            CardMaker("introAnimCard").generate()
-        )
-        self.introAnimCard.setTexture(self.cam_left_tex)
-        self.introAnimCard.setScale(100, 100, 100)
-        self.introAnimCard.setPos(-50, 75, -25)
-        self.introAnimCard.setHpr(0, 0, 0)
-        self.introAnimCard.setTransparency(TransparencyAttrib.MAlpha)
-        self.introAnimCard.setColorScale(1, 1, 1, 1)
-
-        self.autoCamPositioning = False
-
-        self.introMovieTexture = self.startPlayer(
-            "movies/intro-1.mp4", "introMovieTexture"
-        )
-        self.introAnimCard.setTexture(self.introMovieTexture)
-        self.introMovieTexture.setLoop(False)
-        self.introMovieTexture.play()
-        self.taskMgr.add(self.introTask, "introTask")
-
-    def introTask(self, task):
-        if self.introMovieTexture.getTime() >= 4:
-
-            def hideMethod(task):
-                self.introAnimCard.hide()
-                self.introMovieTexture.stop()
-                self.introMovieTexture = None
-                self.introAnimCard.removeNode()
-                self.introAnimCard = None
-                self.blackoutModel.removeNode()
-                self.launch()
-
-            self.doMethodLater(
-                2,
-                hideMethod,
-                "hideMethod",
-            )
-            LerpColorInterval(
-                nodePath=self.introAnimCard,
-                duration=1.5,
-                color=Vec4(0, 0, 0, 0),
-                startColor=Vec4(1, 1, 1, 1),
-            ).start()
-        else:
-            self.UpdateHeadsetTracking()
-            return task.cont
-
     def launch(self):
         cm = CardMaker("backgroundQuad")
         cm.setFrameFullscreenQuad()
@@ -190,9 +114,67 @@ class Launcher(BaseVrApp):
 
         self.creditsText = OnscreenText(text="Programmed by David Sponseller\n")
         self.creditsText.setScale(0.05)
-        self.creditsText.setPos(-0.95, -0.9)
+        self.creditsText.setPos(-0.95 * (1920 / 1080), -0.9)
         self.creditsText.setFg((1, 1, 1, 1))
         self.creditsText.setAlign(TextNode.ALeft)
+
+        self.VrTutorialButton = DirectButton(
+            text="VR Tutorial",
+            scale=0.15,
+            pos=(0, 0, 0.5),
+            command=self.launchVRTutorial,
+        )
+        self.ProgramTutorialButton = DirectButton(
+            text="Program Tutorial",
+            scale=0.15,
+            pos=(0, 0, 0),
+            command=self.launchProgramTutorial,
+        )
+        self.mainProgramButton = DirectButton(
+            text="Main Program",
+            scale=0.15,
+            pos=(0, 0, -0.5),
+            command=self.launchMainProgram,
+        )
+
+    def launchMainProgram(self):
+        subprocess.Popen(
+            [sys.executable, MAIN_SCRIPT_PATH],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.path.dirname(MAIN_SCRIPT_PATH),
+        )
+
+    def launchVRTutorial(self):
+        subprocess.Popen(
+            [sys.executable, VR_TUTORIAL_SCRIPT_PATH],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.path.dirname(VR_TUTORIAL_SCRIPT_PATH),
+        )
+
+    def launchProgramTutorial(self):
+        subprocess.Popen(
+            [sys.executable, PROGRAM_TUTORIAL_SCRIPT_PATH],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.path.dirname(PROGRAM_TUTORIAL_SCRIPT_PATH),
+        )
+
+
+def blocker():
+    subprocess.Popen(
+        [
+            sys.executable,
+            SELF_PATH,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=os.path.dirname(SELF_PATH),
+    )
+
+
+atexit.register(blocker)
 
 
 Launcher().run()
