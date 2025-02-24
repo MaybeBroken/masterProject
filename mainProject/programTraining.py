@@ -3,7 +3,10 @@ import os
 import sys
 import subprocess
 import atexit
-import keyboard
+from screeninfo import get_monitors
+
+if sys.platform == "win32":
+    import keyboard
 from direct.gui.DirectGui import *
 from panda3d.core import *
 from panda3d.core import (
@@ -30,7 +33,7 @@ PROGRAM_TUTORIAL_SCRIPT_PATH = os.path.abspath(
 loadPrcFileData(
     "",
     f"""want-pstats 0
-win-size 1920 1080
+win-size {get_monitors()[0].width} {get_monitors()[0].height}
 fullscreen 0
 undecorated 0
 show-frame-rate-meter 1
@@ -58,12 +61,13 @@ class Launcher(BaseVrApp):
             wantVr=False,
         )
         self.tex = {}
-        keyboard.add_word_listener(
-            word="exit",
-            callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
-            triggers=["enter"],
-            timeout=5,
-        )
+        if sys.platform == "win32":
+            keyboard.add_word_listener(
+                word="exit",
+                callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
+                triggers=["enter"],
+                timeout=5,
+            )
         self.launch()
 
     def launch(self):

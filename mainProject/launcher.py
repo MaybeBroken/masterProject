@@ -3,7 +3,10 @@ import os
 import sys
 import subprocess
 import atexit
-import keyboard
+from screeninfo import get_monitors
+
+if sys.platform == "win32":
+    import keyboard
 from direct.gui.DirectGui import *
 from panda3d.core import *
 from panda3d.core import (
@@ -20,10 +23,11 @@ VR_TUTORIAL_SCRIPT_PATH = os.path.abspath(os.path.join(".", "vrTraining.py"))
 PROGRAM_TUTORIAL_SCRIPT_PATH = os.path.abspath(os.path.join(".", "programTraining.py"))
 SELF_PATH = os.path.abspath(__file__)
 
+
 loadPrcFileData(
     "",
     f"""want-pstats 0
-win-size 1920 1080
+win-size {get_monitors()[0].width} {get_monitors()[0].height}
 fullscreen 0
 undecorated 0
 show-frame-rate-meter 0
@@ -49,12 +53,13 @@ class Launcher(BaseVrApp):
             wantVr=False,
         )
         self.tex = {}
-        keyboard.add_word_listener(
-            word="exit-program",
-            callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
-            triggers=["enter"],
-            timeout=5,
-        )
+        if sys.platform == "win32":
+            keyboard.add_word_listener(
+                word="exit-program",
+                callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
+                triggers=["enter"],
+                timeout=5,
+            )
         self.launch()
 
     def startPlayer(self, media_file, name):
@@ -150,6 +155,7 @@ class Launcher(BaseVrApp):
             stderr=subprocess.PIPE,
             cwd=os.path.dirname(MAIN_SCRIPT_PATH),
         )
+        print("Launched main program")
 
     def launchVRTutorial(self):
         subprocess.Popen(
@@ -158,6 +164,7 @@ class Launcher(BaseVrApp):
             stderr=subprocess.PIPE,
             cwd=os.path.dirname(VR_TUTORIAL_SCRIPT_PATH),
         )
+        print("Launched VR tutorial")
 
     def launchProgramTutorial(self):
         subprocess.Popen(
@@ -166,6 +173,7 @@ class Launcher(BaseVrApp):
             stderr=subprocess.PIPE,
             cwd=os.path.dirname(PROGRAM_TUTORIAL_SCRIPT_PATH),
         )
+        print("Launched program tutorial")
 
 
 def blocker():
