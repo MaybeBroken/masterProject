@@ -17,6 +17,7 @@ from panda3d.core import (
     Vec4,
     TextNode,
 )
+from direct.stdpy.threading import Thread
 from direct.interval.IntervalGlobal import *
 from time import sleep
 
@@ -58,6 +59,7 @@ class Launcher(BaseVrApp):
             launchShowBase=True,
             wantVr=False,
         )
+        self.setBackgroundColor(0, 0, 0, 1)
         keyboard.add_word_listener(
             word="exit",
             callback=lambda: os.system(f"taskkill /F /PID {os.getpid()}"),
@@ -74,24 +76,21 @@ class Launcher(BaseVrApp):
         self.backgroundImageNp = self.render2d.attachNewNode(
             self.makeCard("backgroundTexture")
         )
+        self.backgroundImageNp.setTransparency(TransparencyAttrib.MAlpha)
+        self.backgroundImageNp.setColor(0, 0, 0, 1)
+        self.backgroundImageNp.setBin("background", 0)
         self.backgroundImage = self.loader.loadTexture("movies/background-1.png")
         self.backgroundImageNp.setTexture(self.backgroundImage)
-        self.backgroundImageNp.setBin("background", 0)
-
-        self.creditsText = OnscreenText(text="Programmed by David Sponseller\n")
-        self.creditsText.setScale(0.05)
-        self.creditsText.setPos(-0.95 * (1920 / 1080), -0.9)
-        self.creditsText.setFg((1, 1, 1, 1))
-        self.creditsText.setAlign(TextNode.ALeft)
-
+        self.backgroundImageNp.setColor(1, 1, 1, 1)
         self.panel = Panel()
+        runOnce = False
         for tutorialImage in os.listdir("Training/tutorials/VR/"):
             if tutorialImage.endswith(".png"):
                 name = os.path.splitext(tutorialImage)[0]
                 texture = self.loader.loadTexture(
                     os.path.join("Training/tutorials/VR/", tutorialImage)
                 )
-                name = name.split("_")
+                name = name.split("--")
                 self.panel.addPage(
                     name=name[0],
                     texture=texture,
@@ -101,6 +100,12 @@ class Launcher(BaseVrApp):
                 )
             elif tutorialImage.endswith(".mp4"):
                 name = os.path.splitext(tutorialImage)[0]
+            if not runOnce:
+                runOnce = True
+        if runOnce:
+            self.panel.setPageIndex(0)
+            self.accept("arrow_left", self.panel.previousPage)
+            self.accept("arrow_right", self.panel.nextPage)
 
 
 Launcher = Launcher()
@@ -111,6 +116,7 @@ class Page:
         self.name = name
         self.texture = texture
         self.button = NULL
+        self.buttonText = NULL
         self.description = description
         self.title = title
         self.mediaType = mediaType
@@ -126,25 +132,45 @@ class Panel:
         self.mainNodePath.setTransparency(TransparencyAttrib.MAlpha)
         self.mainNodePath.setTexture(self.mainImg)
         self.mainNodePath.setScale(0.75)
+        self.box_default = Launcher.loader.loadTexture("textures/box-default.png")
+        self.box_focused = Launcher.loader.loadTexture("textures/box-focused.png")
         self.pages: list[Page] = []
         self.buttons: list = []
-        self.pageIndex: int = NULL
+        self.pageIndex: int = 0
+        self.lastPageIndex: int = NULL
 
     def addPage(self, name, texture, description, title, mediaType):
         page = Page(name, texture, description, title, mediaType)
         page.button = DirectButton(
-            text=len(self.pages) + 1,
-            scale=0.05,
+            image=self.box_default,
+            scale=(0.05 * (6000 / 3375), 0.05, 0.05),
             command=self.openPage,
             extraArgs=[page],
             parent=Launcher.aspect2d,
+            geom=None,
+            relief=DGG.FLAT,
+            frameColor=(0.5, 0.5, 0.5, 0),
         )
+        page.button.setTransparency(TransparencyAttrib.MAlpha)
         self.buttons.append(page.button)
         self.pages.append(page)
+        page.buttonText = OnscreenText(
+            text=str(len(self.pages) + 1),
+            scale=(1 * (3375 / 6000), 1, 1),
+            parent=page.button,
+            pos=(0.8, 0),
+            fg=(1, 1, 1, 1),
+            align=TextNode.ACenter,
+        )
         self.sortButtons()
         return page
 
     def openPage(self, page: Page):
+        self.lastPageIndex = self.pageIndex
+        self.pageIndex = self.pages.index(page)
+        self.buttons[self.pageIndex].setImage(self.box_focused)
+        if self.lastPageIndex != self.pageIndex:
+            self.buttons[self.lastPageIndex].setImage(self.box_default)
         if page.mediaType == "texture":
             self.mainNodePath.setTexture(page.texture)
 
@@ -160,19 +186,33 @@ class Panel:
             scale *= spacing / 0.12
 
         for i in range(length):
-            self.buttons[i].setScale(scale)
-            self.buttons[i].setPos(
-                -0.75 + (i * spacing) - (spacing * (length - 1) / 2), 0, -0.75
-            )
+            self.buttons[i].setScale(scale * (6000 / 3375), 1, scale)
+            self.buttons[i].setTransparency(TransparencyAttrib.MAlpha)
+            self.buttons[i].setPos(-0.75 + (i * spacing), 0, -0.875)
 
     def setPageIndex(self, index):
         if index < len(self.pages):
+            self.lastPageIndex = self.pageIndex
             self.pageIndex = index
             self.mainNodePath.setTexture(self.pages[index].texture)
-            self.mainNodePath.setPos(0, 0, -0.75 + (index * (1.5 / len(self.pages))))
-        else:
-            print("Page index out of range")
+            self.buttons[self.pageIndex].setImage(self.box_focused)
+            if self.lastPageIndex != self.pageIndex:
+                self.buttons[self.lastPageIndex].setImage(self.box_default)
+
+    def nextPage(self):
+        if self.pageIndex + 1 < len(self.pages):
+            self.setPageIndex(self.pageIndex + 1)
+
+    def previousPage(self):
+        if self.pageIndex - 1 >= 0:
+            self.setPageIndex(self.pageIndex - 1)
+
+    def navigatePages(self, direction):
+        if direction == "next":
+            self.nextPage()
+        elif direction == "previous":
+            self.previousPage()
 
 
-Launcher.launch()
+Thread(target=Launcher.launch).start()
 Launcher.run()
