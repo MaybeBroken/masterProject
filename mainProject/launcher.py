@@ -30,7 +30,7 @@ show-frame-rate-meter 0
 clock-mode normal
 sync-video 0
 clock-frame-rate 0
-window-title Master Project Launcher
+window-title Terra: VR Launcher
 """,
 )
 

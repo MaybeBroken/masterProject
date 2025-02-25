@@ -49,7 +49,7 @@ frame-rate-meter-update-interval 0.1
 clock-mode normal
 sync-video 0
 clock-frame-rate 0
-window-title Master Project - 2025
+window-title Terra: VR - 2025
 """,
 )
 
