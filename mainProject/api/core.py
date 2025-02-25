@@ -5,6 +5,11 @@ if sys.platform == "win32":
     from OpenGL import GL
     import xr
 else:
+
+    class xr: ...
+
+    class GL: ...
+
     print("VR modules failed to load.")
     if "a" == "b":
         from OpenGL import GL
@@ -54,7 +59,7 @@ class InputState(Structure):
     def __init__(self):
         super().__init__()
         self.hand_scale[:] = [1, 1]
-    
+
     if sys.platform == "win32":
         _fields_ = [
             ("action_set", xr.ActionSet),
