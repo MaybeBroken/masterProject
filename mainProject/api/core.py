@@ -326,13 +326,37 @@ class BaseVrApp(ShowBase):
                             -self.vrCameraPose.orientation.y,
                         )
                     )
-                    vrCamH = self.vrCam.getH()
-                    vrCamP = self.vrCam.getP()
-                    vrCamR = self.vrCam.getR()
-                    self.vrCam.setR(-vrCamR * cos(radians(vrCamH)))
-                    self.vrCam.setR(self.vrCam, vrCamP * cos(radians(vrCamH + 90)))
-                    self.vrCam.setP(vrCamP * cos(radians(vrCamH)))
-                    self.vrCam.setP(self.vrCam, vrCamR * cos(radians(vrCamH + 90)))
+                    # Create a transformation matrix from the current HPR values
+                    hpr = self.vrCam.getHpr()
+                    h, p, r = radians(hpr[0]), radians(hpr[1]), radians(hpr[2])
+
+                    # Calculate the transformation matrix components
+                    ch, sh = cos(h), sin(h)
+                    cp, sp = cos(p), sin(p)
+                    cr, sr = cos(r), sin(r)
+
+                    # Construct the transformation matrix
+                    transformation_matrix = LMatrix4f(
+                        ch * cr + sh * sp * sr,
+                        -ch * sr + sh * sp * cr,
+                        sh * cp,
+                        0,
+                        sr * cp,
+                        cr * cp,
+                        -sp,
+                        0,
+                        -sh * cr + ch * sp * sr,
+                        sr * sh + ch * sp * cr,
+                        ch * cp,
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                    )
+
+                    # Apply the transformation matrix to the vrCam node
+                    self.vrCam.setMat(transformation_matrix)
                 if self.autoControllerPositioning:
                     try:
                         self.hand_left.setPos(

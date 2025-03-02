@@ -89,14 +89,15 @@ class Launcher(BaseVrApp):
         self.backgroundImageNp.setColor(1, 1, 1, 1)
         self.panel = Panel()
         runOnce = False
-        os.chdir("mainProject")
+        if not sys.platform == "win32":
+            os.chdir("mainProject")
         for tutorialImage in os.listdir(os.path.join("training", "tutorials", "VR")):
             if tutorialImage.endswith(".png"):
                 name = os.path.splitext(tutorialImage)[0]
                 texture = self.loader.loadTexture(
                     os.path.join("training", "tutorials", "VR", tutorialImage)
                 )
-                name = name.split("--")
+                name = name.split("--") if "--" in name else [name, name, name]
                 self.panel.addPage(
                     name=name[0],
                     texture=texture,
